@@ -1,36 +1,48 @@
-"use client"
+"use client";
 
-import { Document, Page, Text, View, StyleSheet, Font, pdf } from "@react-pdf/renderer"
-import { interpolateVariables } from "./utils"
-import { useEffect, useState } from "react"
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Font,
+  pdf,
+} from "@react-pdf/renderer";
+import { interpolateVariables } from "./utils";
+import { useEffect, useState } from "react";
 
 // Make sure Roboto font is loaded
 const RobotoFontLoader = () => {
-  const [fontLoaded, setFontLoaded] = useState(false)
+  const [fontLoaded, setFontLoaded] = useState(false);
 
   useEffect(() => {
     if (!fontLoaded) {
       // Add Roboto font to the document if it doesn't exist
       if (!document.getElementById("roboto-font")) {
-        const link = document.createElement("link")
-        link.id = "roboto-font"
-        link.rel = "stylesheet"
-        link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
-        document.head.appendChild(link)
-        setFontLoaded(true)
+        const link = document.createElement("link");
+        link.id = "roboto-font";
+        link.rel = "stylesheet";
+        link.href =
+          "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap";
+        document.head.appendChild(link);
+        setFontLoaded(true);
       }
     }
-  }, [fontLoaded])
+  }, [fontLoaded]);
 
-  return null
-}
+  return null;
+};
 
 // Update the Font registration to use the same font as the preview
 Font.register({
   family: "Roboto",
   src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf",
   fonts: [
-    { src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf", fontWeight: 300 },
+    {
+      src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf",
+      fontWeight: 300,
+    },
     {
       src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf",
       fontWeight: 400,
@@ -39,9 +51,12 @@ Font.register({
       src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf",
       fontWeight: 500,
     },
-    { src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf", fontWeight: 700 },
+    {
+      src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf",
+      fontWeight: 700,
+    },
   ],
-})
+});
 
 const themes = {
   default: {
@@ -76,61 +91,103 @@ const themes = {
     tableHeaderBg: "#e6f0ff",
     tableBorderColor: "#c8d6e5",
   },
-}
+};
 
 interface TemplateData {
-  [key: string]: string | number
+  [key: string]: string | number;
 }
 
 interface PDFDocumentProps {
-  content: string
-  theme?: keyof typeof themes
+  content: string;
+  theme?: keyof typeof themes;
   meta?: {
-    wordCount: number
-    charCount: number
-  }
-  templateData?: TemplateData
+    wordCount: number;
+    charCount: number;
+  };
+  templateData?: TemplateData;
 }
 
 // Helper function to extract tables from HTML content
-function extractTables(html: string): { tables: any[]; contentWithoutTables: string } {
-  const tables: any[] = []
+function extractTables(html: string): {
+  tables: any[];
+  contentWithoutTables: string;
+} {
+  const tables: any[] = [];
 
   // Replace table tags with placeholders and collect table data
-  const contentWithoutTables = html.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
-    // Extract rows
-    const rows: any[] = []
-    const rowMatches = tableContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)
+  const contentWithoutTables = html.replace(
+    /<table[^>]*>([\s\S]*?)<\/table>/gi,
+    (match, tableContent) => {
+      // Extract rows
+      const rows: any[] = [];
+      const rowMatches = tableContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
 
-    if (rowMatches) {
-      rowMatches.forEach((rowMatch) => {
-        const cells: any[] = []
-        // Extract cells (th or td)
-        const cellMatches = rowMatch.match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)
+      if (rowMatches) {
+        rowMatches.forEach((rowMatch) => {
+          const cells: any[] = [];
+          // Extract cells (th or td)
+          const cellMatches = rowMatch.match(
+            /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi
+          );
 
-        if (cellMatches) {
-          cellMatches.forEach((cellMatch) => {
-            // Extract cell content without HTML tags
-            const cellContent = cellMatch.replace(/<[^>]*>/g, "").trim()
-            const isHeader = cellMatch.startsWith("<th")
-            cells.push({ content: cellContent, isHeader })
-          })
-        }
+          if (cellMatches) {
+            cellMatches.forEach((cellMatch) => {
+              // Extract cell content without HTML tags
+              const cellContent = cellMatch.replace(/<[^>]*>/g, "").trim();
+              const isHeader = cellMatch.startsWith("<th");
+              cells.push({ content: cellContent, isHeader });
+            });
+          }
 
-        rows.push(cells)
-      })
+          rows.push(cells);
+        });
+      }
+
+      tables.push(rows);
+      return `[TABLE_${tables.length - 1}]`; // Replace with placeholder
     }
+  );
 
-    tables.push(rows)
-    return `[TABLE_${tables.length - 1}]` // Replace with placeholder
-  })
-
-  return { tables, contentWithoutTables }
+  return { tables, contentWithoutTables };
 }
 
-// Process content to replace HTML tags and preserve line breaks
+// Modify the processContent function to preserve text alignment
 const processContent = (text: string) => {
-  return text
+  // Extract alignment information before removing HTML tags
+  const alignmentMap: { [key: string]: string } = {};
+  let counter = 0;
+
+  // Replace paragraphs and headings with alignment placeholders
+  const textWithPlaceholders = text
+    .replace(
+      /<(p|h[1-6])[^>]*style="[^"]*text-align:\s*([^;"\s]+)[^"]*"[^>]*>(.*?)<\/\1>/gi,
+      (match, tag, align, content) => {
+        const id = `ALIGN_${counter++}`;
+        alignmentMap[id] = align;
+        return `${id}${content}${id}\n\n`;
+      }
+    )
+    // Handle div with text-align
+    .replace(
+      /<div[^>]*style="[^"]*text-align:\s*([^;"\s]+)[^"]*"[^>]*>(.*?)<\/div>/gi,
+      (match, align, content) => {
+        const id = `ALIGN_${counter++}`;
+        alignmentMap[id] = align;
+        return `${id}${content}${id}\n\n`;
+      }
+    )
+    // Handle text-align class from TipTap (ProseMirror)
+    .replace(
+      /<(p|h[1-6]|div)[^>]*class="[^"]*text-align-([^"\s]+)[^"]*"[^>]*>(.*?)<\/\1>/gi,
+      (match, tag, align, content) => {
+        const id = `ALIGN_${counter++}`;
+        alignmentMap[id] = align;
+        return `${id}${content}${id}\n\n`;
+      }
+    );
+
+  // Process the content as before
+  const processedText = textWithPlaceholders
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<p[^>]*>(.*?)<\/p>/gi, "$1\n\n")
     .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, "$1\n\n")
@@ -138,23 +195,35 @@ const processContent = (text: string) => {
     .replace(/<[^>]*>/g, "") // Remove remaining HTML tags
     .replace(/&nbsp;/g, " ") // Replace &nbsp; with spaces
     .replace(/\n\s*\n\s*\n/g, "\n\n") // Normalize multiple line breaks
-    .trim()
-}
+    .trim();
 
-export function PDFDocument({ content, theme = "default", meta, templateData }: PDFDocumentProps) {
-  const selectedTheme = themes[theme]
+  // Return both the processed text and alignment information
+  return { processedText, alignmentMap };
+};
+
+// Update the PDFDocument component to handle text alignment
+export function PDFDocument({
+  content,
+  theme = "default",
+  meta,
+  templateData,
+}: PDFDocumentProps) {
+  const selectedTheme = themes[theme];
 
   // Extract tables and get content without tables
-  const { tables, contentWithoutTables } = extractTables(content)
+  const { tables, contentWithoutTables } = extractTables(content);
 
   // Process variables in content
-  const contentWithVars = interpolateVariables(contentWithoutTables, templateData)
+  const contentWithVars = interpolateVariables(
+    contentWithoutTables,
+    templateData
+  );
 
-  // Process HTML to plain text
-  const processedContent = processContent(contentWithVars)
+  // Process HTML to plain text and get alignment information
+  const { processedText, alignmentMap } = processContent(contentWithVars);
 
   // Split content by table placeholders
-  const contentParts = processedContent.split(/\[TABLE_(\d+)\]/)
+  const contentParts = processedText.split(/\[TABLE_(\d+)\]/);
 
   const styles = StyleSheet.create({
     page: {
@@ -173,6 +242,21 @@ export function PDFDocument({ content, theme = "default", meta, templateData }: 
     content: {
       marginBottom: 10,
       lineHeight: 1.5,
+    },
+    contentLeft: {
+      marginBottom: 10,
+      lineHeight: 1.5,
+      textAlign: "left",
+    },
+    contentCenter: {
+      marginBottom: 10,
+      lineHeight: 1.5,
+      textAlign: "center",
+    },
+    contentRight: {
+      marginBottom: 10,
+      lineHeight: 1.5,
+      textAlign: "right",
     },
     metadata: {
       position: "absolute",
@@ -221,26 +305,74 @@ export function PDFDocument({ content, theme = "default", meta, templateData }: 
     lastRow: {
       borderBottomWidth: 0,
     },
-  })
+  });
+
+  // Helper function to process text with alignment markers
+  const processTextWithAlignment = (text: string) => {
+    // Split by alignment markers
+    const parts = text.split(/ALIGN_\d+/);
+    const alignmentMarkers = text.match(/ALIGN_\d+/g) || [];
+
+    if (parts.length <= 1) {
+      return <Text style={styles.content}>{text}</Text>;
+    }
+
+    const elements = [];
+    let currentIndex = 0;
+
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i]) {
+        if (i === 0 || i === parts.length - 1) {
+          // First or last part without alignment
+          elements.push(
+            <Text key={`text-${i}`} style={styles.content}>
+              {parts[i]}
+            </Text>
+          );
+        } else if (i % 2 === 1) {
+          // Content with alignment
+          const alignMarker = alignmentMarkers[Math.floor(currentIndex / 2)];
+          const alignValue = alignmentMap[alignMarker];
+          let styleToUse = styles.content;
+
+          if (alignValue === "center") {
+            styleToUse = styles.contentCenter;
+          } else if (alignValue === "right") {
+            styleToUse = styles.contentRight;
+          } else if (alignValue === "left") {
+            styleToUse = styles.contentLeft;
+          }
+
+          elements.push(
+            <Text key={`text-${i}`} style={styleToUse}>
+              {parts[i]}
+            </Text>
+          );
+
+          currentIndex++;
+        }
+      }
+    }
+
+    return elements;
+  };
 
   // Render content with tables
   const renderContent = () => {
-    const elements = []
+    const elements = [];
 
     // First part of content (before first table)
     if (contentParts.length > 0) {
       elements.push(
-        <Text key="content-0" style={styles.content}>
-          {contentParts[0]}
-        </Text>,
-      )
+        <View key="content-0">{processTextWithAlignment(contentParts[0])}</View>
+      );
     }
 
     // Render tables and content parts
     for (let i = 1; i < contentParts.length; i += 2) {
       if (i < contentParts.length - 1) {
-        const tableIndex = Number.parseInt(contentParts[i], 10)
-        const table = tables[tableIndex]
+        const tableIndex = Number.parseInt(contentParts[i], 10);
+        const table = tables[tableIndex];
 
         if (table && table.length > 0) {
           // Render table
@@ -251,7 +383,9 @@ export function PDFDocument({ content, theme = "default", meta, templateData }: 
                   key={`row-${rowIndex}`}
                   style={[
                     styles.tableRow,
-                    rowIndex === 0 && row.some((cell) => cell.isHeader) ? styles.tableHeaderRow : null,
+                    rowIndex === 0 && row.some((cell) => cell.isHeader)
+                      ? styles.tableHeaderRow
+                      : null,
                     rowIndex === table.length - 1 ? styles.lastRow : null,
                   ]}
                 >
@@ -269,21 +403,21 @@ export function PDFDocument({ content, theme = "default", meta, templateData }: 
                   ))}
                 </View>
               ))}
-            </View>,
-          )
+            </View>
+          );
         }
 
         // Add content after table
         elements.push(
-          <Text key={`content-${i + 1}`} style={styles.content}>
-            {contentParts[i + 1]}
-          </Text>,
-        )
+          <View key={`content-${i + 1}`}>
+            {processTextWithAlignment(contentParts[i + 1])}
+          </View>
+        );
       }
     }
 
-    return elements
-  }
+    return elements;
+  };
 
   return (
     <Document>
@@ -297,16 +431,15 @@ export function PDFDocument({ content, theme = "default", meta, templateData }: 
         )}
       </Page>
     </Document>
-  )
+  );
 }
 
 // Add the createPDF function export
 export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
   try {
-    return await pdf(<PDFDocument {...props} />).toBlob()
+    return await pdf(<PDFDocument {...props} />).toBlob();
   } catch (error) {
-    console.error("PDF generation error:", error)
-    throw new Error("Failed to generate PDF")
+    console.error("PDF generation error:", error);
+    throw new Error("Failed to generate PDF");
   }
 }
-

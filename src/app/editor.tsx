@@ -299,6 +299,7 @@ export default function Editor({
       TableCell,
       TextAlign.configure({
         types: ["heading", "paragraph"],
+        defaultAlignment: "left",
       }),
       TextStyle,
       Color.configure({ types: [TextStyle.name] }),
