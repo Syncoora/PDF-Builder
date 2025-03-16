@@ -1,21 +1,31 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useEditor, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Table from "@tiptap/extension-table"
-import TableRow from "@tiptap/extension-table-row"
-import TableHeader from "@tiptap/extension-table-header"
-import TableCell from "@tiptap/extension-table-cell"
-import TextAlign from "@tiptap/extension-text-align"
-import TextStyle from "@tiptap/extension-text-style"
-import Color from "@tiptap/extension-color"
-import Image from "@tiptap/extension-image"
-import { Toggle } from "@/components/ui/toggle"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
+import TextAlign from "@tiptap/extension-text-align";
+import TextStyle from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import Image from "@tiptap/extension-image";
+import { Toggle } from "@/components/ui/toggle";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Bold,
   Italic,
@@ -33,15 +43,65 @@ import {
   Trash2,
   Type,
   Upload,
-} from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { useState, useEffect } from "react"
-import CharacterCount from "@tiptap/extension-character-count"
-import FontFamily from "@tiptap/extension-font-family"
-import UnderlineExtension from "@tiptap/extension-underline"
-import FontSize from "@tiptap/extension-font-size"
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import CharacterCount from "@tiptap/extension-character-count";
+import FontFamily from "@tiptap/extension-font-family";
+import UnderlineExtension from "@tiptap/extension-underline";
+// Replace @tiptap/extension-font-size with a custom extension
+import { Extension } from "@tiptap/core";
+
+// Create a custom font size extension
+const CustomFontSize = Extension.create({
+  name: "customFontSize",
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["textStyle"],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize,
+            renderHTML: (attributes) => {
+              if (!attributes.fontSize) {
+                return {};
+              }
+
+              return {
+                style: `font-size: ${attributes.fontSize}`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+
+  addCommands() {
+    return {
+      setFontSize:
+        (fontSize) =>
+        ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize }).run();
+        },
+      unsetFontSize:
+        () =>
+        ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize: null }).run();
+        },
+    };
+  },
+});
 
 // Add this CSS at the top of your editor styles
 const tableStyles = `
@@ -80,35 +140,35 @@ const tableStyles = `
   position: absolute;
   z-index: 2;
 }
-`
+`;
 
 interface ImageUploadDialogProps {
-  onImageSelected: (imageUrl: string) => void
+  onImageSelected: (imageUrl: string) => void;
 }
 
 function ImageUploadDialog({ onImageSelected }: ImageUploadDialogProps) {
-  const [imageUrl, setImageUrl] = useState("")
+  const [imageUrl, setImageUrl] = useState("");
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       // Convert the file to base64
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result as string
-        onImageSelected(base64String)
-      }
-      reader.readAsDataURL(file)
+        const base64String = reader.result as string;
+        onImageSelected(base64String);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (imageUrl) {
-      onImageSelected(imageUrl)
-      setImageUrl("")
+      onImageSelected(imageUrl);
+      setImageUrl("");
     }
-  }
+  };
 
   return (
     <Dialog>
@@ -135,7 +195,9 @@ function ImageUploadDialog({ onImageSelected }: ImageUploadDialogProps) {
                 >
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Click to upload or drag and drop</p>
+                    <p className="text-sm text-muted-foreground">
+                      Click to upload or drag and drop
+                    </p>
                   </div>
                   <input
                     id="image-upload"
@@ -164,25 +226,30 @@ function ImageUploadDialog({ onImageSelected }: ImageUploadDialogProps) {
         </Tabs>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // Update the EditorProps interface
 interface EditorProps {
-  content: string
-  onChange: (content: string) => void
-  onUpdateMeta: (meta: any) => void
-  variables: string[]
+  content: string;
+  onChange: (content: string) => void;
+  onUpdateMeta: (meta: any) => void;
+  variables: string[];
 }
 
 // Update the Editor component
-export default function Editor({ content, onChange, onUpdateMeta, variables }: EditorProps) {
+export default function Editor({
+  content,
+  onChange,
+  onUpdateMeta,
+  variables,
+}: EditorProps) {
   const [fontFamilies, setFontFamilies] = useState([
     { value: "Arial", label: "Arial" },
     { value: "Times New Roman", label: "Times New Roman" },
     { value: "Georgia", label: "Georgia" },
     { value: "Courier New", label: "Courier New" },
-  ])
+  ]);
 
   const [fontSizes, setFontSizes] = useState([
     "8",
@@ -200,7 +267,7 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
     "36",
     "48",
     "72",
-  ])
+  ]);
 
   const [colorPresets, setColorPresets] = useState([
     { label: "Black", value: "#000000" },
@@ -219,7 +286,7 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
     { label: "Blue", value: "#0000FF" },
     { label: "Teal", value: "#008080" },
     { label: "Aqua", value: "#00FFFF" },
-  ])
+  ]);
 
   const editor = useEditor({
     extensions: [
@@ -244,90 +311,97 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
         types: ["textStyle"],
       }),
       UnderlineExtension,
-      FontSize.configure({
-        types: ["textStyle"],
-        defaultSize: "16px",
-      }),
+      // Use our custom font size extension
+      CustomFontSize,
     ],
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      onChange(editor.getHTML());
       onUpdateMeta({
         wordCount: editor.storage?.characterCount?.words?.() ?? 0,
         charCount: editor.storage?.characterCount?.characters?.() ?? 0,
-      })
+      });
     },
-  })
+  });
 
   useEffect(() => {
-    const style = document.createElement("style")
-    style.textContent = tableStyles
-    document.head.appendChild(style)
+    const style = document.createElement("style");
+    style.textContent = tableStyles;
+    document.head.appendChild(style);
     return () => {
-      document.head.removeChild(style)
-    }
-  }, [])
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Add null check at the beginning
   if (!editor) {
-    return null
+    return null;
   }
 
   // Add this helper function for font size commands
   const setFontSize = (size: string) => {
-    editor?.chain().focus().setMark("fontSize", { fontSize: size }).run()
-  }
+    editor?.chain().focus().setFontSize(`${size}px`).run();
+  };
 
   const insertTable = () => {
-    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-  }
+    editor
+      ?.chain()
+      .focus()
+      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+      .run();
+  };
 
   const addColumnBefore = () => {
-    editor?.chain().focus().addColumnBefore().run()
-  }
+    editor?.chain().focus().addColumnBefore().run();
+  };
 
   const addColumnAfter = () => {
-    editor?.chain().focus().addColumnAfter().run()
-  }
+    editor?.chain().focus().addColumnAfter().run();
+  };
 
   const deleteColumn = () => {
-    editor?.chain().focus().deleteColumn().run()
-  }
+    editor?.chain().focus().deleteColumn().run();
+  };
 
   const addRowBefore = () => {
-    editor?.chain().focus().addRowBefore().run()
-  }
+    editor?.chain().focus().addRowBefore().run();
+  };
 
   const addRowAfter = () => {
-    editor?.chain().focus().addRowAfter().run()
-  }
+    editor?.chain().focus().addRowAfter().run();
+  };
 
   const deleteRow = () => {
-    editor?.chain().focus().deleteRow().run()
-  }
+    editor?.chain().focus().deleteRow().run();
+  };
 
   const deleteTable = () => {
-    editor?.chain().focus().deleteTable().run()
-  }
+    editor?.chain().focus().deleteTable().run();
+  };
 
   const handleImageSelected = (imageUrl: string) => {
-    editor?.chain().focus().setImage({ src: imageUrl }).run()
-  }
+    editor?.chain().focus().setImage({ src: imageUrl }).run();
+  };
 
   // Add a function to insert variables
   const insertVariable = (variable: string) => {
-    editor?.chain().focus().insertContent(`\${${variable}}`).run()
-  }
+    editor?.chain().focus().insertContent(`\${${variable}}`).run();
+  };
 
   // Add a helper text above the editor
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground mb-2">
-        Use ${"{variable}"} syntax to insert dynamic values. Available variables: name, quantity, price
+        Use ${"{variable}"} syntax to insert dynamic values. Available
+        variables: name, quantity, price
       </div>
       <div className="flex flex-wrap gap-2 p-2 border rounded-lg bg-muted/50">
         {/* Font Controls */}
-        <Select onValueChange={(value) => editor?.chain().focus().setFontFamily(value).run()}>
+        <Select
+          onValueChange={(value) =>
+            editor?.chain().focus().setFontFamily(value).run()
+          }
+        >
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Font Family" />
           </SelectTrigger>
@@ -340,7 +414,7 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
           </SelectContent>
         </Select>
 
-        <Select onValueChange={(value) => editor?.chain().focus().setFontSize(`${value}px`).run()}>
+        <Select onValueChange={(value) => setFontSize(value)}>
           <SelectTrigger className="w-[100px]">
             <SelectValue placeholder="Size" />
           </SelectTrigger>
@@ -361,7 +435,8 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
               <div
                 className="absolute bottom-0 left-1/2 h-1 w-4 -translate-x-1/2 rounded-t-sm"
                 style={{
-                  backgroundColor: editor?.getAttributes("textStyle").color || "#000000",
+                  backgroundColor:
+                    editor?.getAttributes("textStyle").color || "#000000",
                 }}
               />
             </Button>
@@ -375,7 +450,7 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
                   style={{ backgroundColor: color.value }}
                   title={color.label}
                   onClick={() => {
-                    editor?.chain().focus().setColor(color.value).run()
+                    editor?.chain().focus().setColor(color.value).run();
                   }}
                 >
                   {editor?.isActive("textStyle", { color: color.value }) && (
@@ -404,7 +479,9 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
         </Toggle>
         <Toggle
           pressed={editor?.isActive("underline") ?? false}
-          onPressedChange={() => editor?.chain().focus().toggleUnderline().run()}
+          onPressedChange={() =>
+            editor?.chain().focus().toggleUnderline().run()
+          }
         >
           <Underline className="h-4 w-4" />
         </Toggle>
@@ -424,7 +501,9 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
         {/* Lists */}
         <Toggle
           pressed={editor?.isActive("bulletList") ?? false}
-          onPressedChange={() => editor?.chain().focus().toggleBulletList().run()}
+          onPressedChange={() =>
+            editor?.chain().focus().toggleBulletList().run()
+          }
         >
           <List className="h-4 w-4" />
         </Toggle>
@@ -432,19 +511,25 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
         {/* Alignment */}
         <Toggle
           pressed={editor?.isActive({ textAlign: "left" }) ?? false}
-          onPressedChange={() => editor?.chain().focus().setTextAlign("left").run()}
+          onPressedChange={() =>
+            editor?.chain().focus().setTextAlign("left").run()
+          }
         >
           <AlignLeft className="h-4 w-4" />
         </Toggle>
         <Toggle
           pressed={editor?.isActive({ textAlign: "center" }) ?? false}
-          onPressedChange={() => editor?.chain().focus().setTextAlign("center").run()}
+          onPressedChange={() =>
+            editor?.chain().focus().setTextAlign("center").run()
+          }
         >
           <AlignCenter className="h-4 w-4" />
         </Toggle>
         <Toggle
           pressed={editor?.isActive({ textAlign: "right" }) ?? false}
-          onPressedChange={() => editor?.chain().focus().setTextAlign("right").run()}
+          onPressedChange={() =>
+            editor?.chain().focus().setTextAlign("right").run()
+          }
         >
           <AlignRight className="h-4 w-4" />
         </Toggle>
@@ -491,14 +576,14 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
             </div>
             <Select
               onValueChange={(value) => {
-                const style = document.createElement("style")
+                const style = document.createElement("style");
                 style.textContent = `
                   .ProseMirror table td,
                   .ProseMirror table th {
                     border-width: ${value};
                   }
-                `
-                document.head.appendChild(style)
+                `;
+                document.head.appendChild(style);
               }}
             >
               <SelectTrigger>
@@ -547,6 +632,5 @@ export default function Editor({ content, onChange, onUpdateMeta, variables }: E
         />
       )}
     </div>
-  )
+  );
 }
-
