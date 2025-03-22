@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { SavedDocument } from "@/lib/types"
-import { FileIcon, Trash2Icon, Download } from "lucide-react"
+import { FileIcon, Trash2Icon, Download, Edit } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
 interface DocumentsDialogProps {
@@ -13,9 +13,10 @@ interface DocumentsDialogProps {
   onLoad: (doc: SavedDocument) => void
   onDelete: (id: string) => void
   onDownload: (doc: SavedDocument) => void
+  currentDocumentId?: string
 }
 
-export function DocumentsDialog({ documents, onLoad, onDelete, onDownload }: DocumentsDialogProps) {
+export function DocumentsDialog({ documents, onLoad, onDelete, onDownload, currentDocumentId }: DocumentsDialogProps) {
   const [open, setOpen] = useState(false)
 
   const handleLoad = (doc: SavedDocument) => {
@@ -50,14 +51,25 @@ export function DocumentsDialog({ documents, onLoad, onDelete, onDownload }: Doc
               </TableHeader>
               <TableBody>
                 {documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell>{doc.title}</TableCell>
+                  <TableRow key={doc.id} className={currentDocumentId === doc.id ? "bg-muted/50" : ""}>
+                    <TableCell>
+                      {doc.title}
+                      {currentDocumentId === doc.id && (
+                        <span className="ml-2 text-xs text-muted-foreground">(Current)</span>
+                      )}
+                    </TableCell>
                     <TableCell>{doc.meta.wordCount}</TableCell>
                     <TableCell>{formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" onClick={() => handleLoad(doc)}>
-                          <FileIcon className="h-4 w-4" />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleLoad(doc)}
+                          disabled={currentDocumentId === doc.id}
+                          title={currentDocumentId === doc.id ? "Currently editing" : "Edit document"}
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="icon" onClick={() => onDownload(doc)}>
                           <Download className="h-4 w-4" />

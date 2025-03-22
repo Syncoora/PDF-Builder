@@ -69,17 +69,30 @@
   z-index: 2;
 }
 
+/* Text alignment styles for the editor */
+.ProseMirror .text-align-left {
+  text-align: left;
+}
+
+.ProseMirror .text-align-center {
+  text-align: center;
+}
+
+.ProseMirror .text-align-right {
+  text-align: right;
+}
+
 /* Preview table styles */
 .prose table {
   width: 100%;
   border-collapse: collapse;
+  margin: 1rem 0;
   overflow-x: auto;
-  display: block;
 }
 
 .prose table th,
 .prose table td {
-  border: 1px solid #ddd;
+  border: 2px solid #ddd;
   padding: 8px;
   text-align: left;
 }
@@ -104,6 +117,32 @@
 
 .dark .prose table tr:nth-child(even) {
   background-color: #2d3748;
+}
+
+/* Text alignment styles for the preview */
+.prose .text-align-left {
+  text-align: left;
+}
+
+.prose .text-align-center {
+  text-align: center;
+}
+
+.prose .text-align-right {
+  text-align: right;
+}
+
+/* Text alignment styles for the PDF preview */
+.pdf-preview .text-align-left {
+  text-align: left;
+}
+
+.pdf-preview .text-align-center {
+  text-align: center;
+}
+
+.pdf-preview .text-align-right {
+  text-align: right;
 }
 
 /* Add styles for color picker */
@@ -153,7 +192,7 @@
   color: #000000;
 }
 
-/* Ensure tables in preview match PDF tables */
+/* Ensure tables in preview match editor tables */
 .pdf-preview table {
   width: 100%;
   border-collapse: collapse;
@@ -162,7 +201,7 @@
 
 .pdf-preview table th,
 .pdf-preview table td {
-  border: 1px solid #dddddd;
+  border: 2px solid #dddddd;
   padding: 8px;
   text-align: left;
 }

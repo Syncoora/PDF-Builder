@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import CharacterCount from "@tiptap/extension-character-count";
 import FontFamily from "@tiptap/extension-font-family";
 import UnderlineExtension from "@tiptap/extension-underline";
@@ -237,401 +237,421 @@ interface EditorProps {
   variables: string[];
 }
 
-// Update the Editor component
-export default function Editor({
-  content,
-  onChange,
-  onUpdateMeta,
-  variables,
-}: EditorProps) {
-  const [fontFamilies, setFontFamilies] = useState([
-    { value: "Arial", label: "Arial" },
-    { value: "Times New Roman", label: "Times New Roman" },
-    { value: "Georgia", label: "Georgia" },
-    { value: "Courier New", label: "Courier New" },
-  ]);
+// Add a ref type for the editor
+export interface EditorRef {
+  getContent: () => string;
+}
 
-  const [fontSizes, setFontSizes] = useState([
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
-    "14",
-    "16",
-    "18",
-    "20",
-    "24",
-    "26",
-    "28",
-    "36",
-    "48",
-    "72",
-  ]);
+// Update the Editor component to expose a method to get current content
+const Editor = forwardRef<EditorRef, EditorProps>(
+  ({ content, onChange, onUpdateMeta, variables }, ref) => {
+    const [fontFamilies, setFontFamilies] = useState([
+      { value: "Arial", label: "Arial" },
+      { value: "Times New Roman", label: "Times New Roman" },
+      { value: "Georgia", label: "Georgia" },
+      { value: "Courier New", label: "Courier New" },
+    ]);
 
-  const [colorPresets, setColorPresets] = useState([
-    { label: "Black", value: "#000000" },
-    { label: "Gray", value: "#808080" },
-    { label: "Silver", value: "#C0C0C0" },
-    { label: "White", value: "#FFFFFF" },
-    { label: "Maroon", value: "#800000" },
-    { label: "Red", value: "#FF0000" },
-    { label: "Purple", value: "#800080" },
-    { label: "Fuchsia", value: "#FF00FF" },
-    { label: "Green", value: "#008000" },
-    { label: "Lime", value: "#00FF00" },
-    { label: "Olive", value: "#808000" },
-    { label: "Yellow", value: "#FFFF00" },
-    { label: "Navy", value: "#000080" },
-    { label: "Blue", value: "#0000FF" },
-    { label: "Teal", value: "#008080" },
-    { label: "Aqua", value: "#00FFFF" },
-  ]);
+    const [fontSizes, setFontSizes] = useState([
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "14",
+      "16",
+      "18",
+      "20",
+      "24",
+      "26",
+      "28",
+      "36",
+      "48",
+      "72",
+    ]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Table.configure({
-        resizable: true,
-      }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-        defaultAlignment: "left",
-      }),
-      TextStyle,
-      Color.configure({ types: [TextStyle.name] }),
-      Image.configure({
-        inline: true,
-        allowBase64: true,
-      }),
-      CharacterCount,
-      FontFamily.configure({
-        types: ["textStyle"],
-      }),
-      UnderlineExtension,
-      // Use our custom font size extension
-      CustomFontSize,
-    ],
-    content,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-      onUpdateMeta({
-        wordCount: editor.storage?.characterCount?.words?.() ?? 0,
-        charCount: editor.storage?.characterCount?.characters?.() ?? 0,
-      });
-    },
-  });
+    const [colorPresets, setColorPresets] = useState([
+      { label: "Black", value: "#000000" },
+      { label: "Gray", value: "#808080" },
+      { label: "Silver", value: "#C0C0C0" },
+      { label: "White", value: "#FFFFFF" },
+      { label: "Maroon", value: "#800000" },
+      { label: "Red", value: "#FF0000" },
+      { label: "Purple", value: "#800080" },
+      { label: "Fuchsia", value: "#FF00FF" },
+      { label: "Green", value: "#008000" },
+      { label: "Lime", value: "#00FF00" },
+      { label: "Olive", value: "#808000" },
+      { label: "Yellow", value: "#FFFF00" },
+      { label: "Navy", value: "#000080" },
+      { label: "Blue", value: "#0000FF" },
+      { label: "Teal", value: "#008080" },
+      { label: "Aqua", value: "#00FFFF" },
+    ]);
 
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = tableStyles;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
+    // Create a new editor instance when content changes
+    const editor = useEditor({
+      extensions: [
+        StarterKit,
+        Table.configure({
+          resizable: true,
+        }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        TextAlign.configure({
+          types: ["heading", "paragraph"],
+          defaultAlignment: "left",
+        }),
+        TextStyle,
+        Color.configure({ types: [TextStyle.name] }),
+        Image.configure({
+          inline: true,
+          allowBase64: true,
+        }),
+        CharacterCount,
+        FontFamily.configure({
+          types: ["textStyle"],
+        }),
+        UnderlineExtension,
+        // Use our custom font size extension
+        CustomFontSize,
+      ],
+      content,
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        onChange(html);
+        onUpdateMeta({
+          wordCount: editor.storage?.characterCount?.words?.() ?? 0,
+          charCount: editor.storage?.characterCount?.characters?.() ?? 0,
+        });
+      },
+    });
+
+    // Expose methods via ref
+    useImperativeHandle(ref, () => ({
+      getContent: () => (editor ? editor.getHTML() : content),
+    }));
+
+    // Update editor content when content prop changes
+    useEffect(() => {
+      if (editor && content !== editor.getHTML()) {
+        editor.commands.setContent(content);
+      }
+    }, [content, editor]);
+
+    useEffect(() => {
+      const style = document.createElement("style");
+      style.textContent = tableStyles;
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
+    }, []);
+
+    // Add null check at the beginning
+    if (!editor) {
+      return null;
+    }
+
+    // Add this helper function for font size commands
+    const setFontSize = (size: string) => {
+      editor?.chain().focus().setFontSize(`${size}px`).run();
     };
-  }, []);
 
-  // Add null check at the beginning
-  if (!editor) {
-    return null;
-  }
+    const insertTable = () => {
+      editor
+        ?.chain()
+        .focus()
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run();
+    };
 
-  // Add this helper function for font size commands
-  const setFontSize = (size: string) => {
-    editor?.chain().focus().setFontSize(`${size}px`).run();
-  };
+    const addColumnBefore = () => {
+      editor?.chain().focus().addColumnBefore().run();
+    };
 
-  const insertTable = () => {
-    editor
-      ?.chain()
-      .focus()
-      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-      .run();
-  };
+    const addColumnAfter = () => {
+      editor?.chain().focus().addColumnAfter().run();
+    };
 
-  const addColumnBefore = () => {
-    editor?.chain().focus().addColumnBefore().run();
-  };
+    const deleteColumn = () => {
+      editor?.chain().focus().deleteColumn().run();
+    };
 
-  const addColumnAfter = () => {
-    editor?.chain().focus().addColumnAfter().run();
-  };
+    const addRowBefore = () => {
+      editor?.chain().focus().addRowBefore().run();
+    };
 
-  const deleteColumn = () => {
-    editor?.chain().focus().deleteColumn().run();
-  };
+    const addRowAfter = () => {
+      editor?.chain().focus().addRowAfter().run();
+    };
 
-  const addRowBefore = () => {
-    editor?.chain().focus().addRowBefore().run();
-  };
+    const deleteRow = () => {
+      editor?.chain().focus().deleteRow().run();
+    };
 
-  const addRowAfter = () => {
-    editor?.chain().focus().addRowAfter().run();
-  };
+    const deleteTable = () => {
+      editor?.chain().focus().deleteTable().run();
+    };
 
-  const deleteRow = () => {
-    editor?.chain().focus().deleteRow().run();
-  };
+    const handleImageSelected = (imageUrl: string) => {
+      editor?.chain().focus().setImage({ src: imageUrl }).run();
+    };
 
-  const deleteTable = () => {
-    editor?.chain().focus().deleteTable().run();
-  };
+    // Add a function to insert variables
+    const insertVariable = (variable: string) => {
+      editor?.chain().focus().insertContent(`\${${variable}}`).run();
+    };
 
-  const handleImageSelected = (imageUrl: string) => {
-    editor?.chain().focus().setImage({ src: imageUrl }).run();
-  };
-
-  // Add a function to insert variables
-  const insertVariable = (variable: string) => {
-    editor?.chain().focus().insertContent(`\${${variable}}`).run();
-  };
-
-  // Add a helper text above the editor
-  return (
-    <div className="space-y-4">
-      <div className="text-sm text-muted-foreground mb-2">
-        Use ${"{variable}"} syntax to insert dynamic values. Available
-        variables: name, quantity, price
-      </div>
-      <div className="flex flex-wrap gap-2 p-2 border rounded-lg bg-muted/50">
-        {/* Font Controls */}
-        <Select
-          onValueChange={(value) =>
-            editor?.chain().focus().setFontFamily(value).run()
-          }
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Font Family" />
-          </SelectTrigger>
-          <SelectContent>
-            {fontFamilies.map((font) => (
-              <SelectItem key={font.value} value={font.value}>
-                {font.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select onValueChange={(value) => setFontSize(value)}>
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="Size" />
-          </SelectTrigger>
-          <SelectContent>
-            {fontSizes.map((size) => (
-              <SelectItem key={size} value={size}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Update the Text Color control */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="relative">
-              <Type className="h-4 w-4" />
-              <div
-                className="absolute bottom-0 left-1/2 h-1 w-4 -translate-x-1/2 rounded-t-sm"
-                style={{
-                  backgroundColor:
-                    editor?.getAttributes("textStyle").color || "#000000",
-                }}
-              />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64">
-            <div className="grid grid-cols-5 gap-2">
-              {colorPresets.map((color) => (
-                <button
-                  key={color.value}
-                  className="relative h-8 w-8 rounded-md border border-muted hover:scale-105 transition"
-                  style={{ backgroundColor: color.value }}
-                  title={color.label}
-                  onClick={() => {
-                    editor?.chain().focus().setColor(color.value).run();
-                  }}
-                >
-                  {editor?.isActive("textStyle", { color: color.value }) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-white shadow-sm" />
-                    </div>
-                  )}
-                </button>
+    // Add a helper text above the editor
+    return (
+      <div className="space-y-4">
+        <div className="text-sm text-muted-foreground mb-2">
+          Use ${"{variable}"} syntax to insert dynamic values. Available
+          variables: name, quantity, price
+        </div>
+        <div className="flex flex-wrap gap-2 p-2 border rounded-lg bg-muted/50">
+          {/* Font Controls */}
+          <Select
+            onValueChange={(value) =>
+              editor?.chain().focus().setFontFamily(value).run()
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Font Family" />
+            </SelectTrigger>
+            <SelectContent>
+              {fontFamilies.map((font) => (
+                <SelectItem key={font.value} value={font.value}>
+                  {font.label}
+                </SelectItem>
               ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+            </SelectContent>
+          </Select>
 
-        {/* Text Formatting */}
-        <Toggle
-          pressed={editor?.isActive("bold") ?? false}
-          onPressedChange={() => editor?.chain().focus().toggleBold().run()}
-        >
-          <Bold className="h-4 w-4" />
-        </Toggle>
-        <Toggle
-          pressed={editor?.isActive("italic") ?? false}
-          onPressedChange={() => editor?.chain().focus().toggleItalic().run()}
-        >
-          <Italic className="h-4 w-4" />
-        </Toggle>
-        <Toggle
-          pressed={editor?.isActive("underline") ?? false}
-          onPressedChange={() =>
-            editor?.chain().focus().toggleUnderline().run()
-          }
-        >
-          <Underline className="h-4 w-4" />
-        </Toggle>
-        <Toggle
-          pressed={editor?.isActive("strike") ?? false}
-          onPressedChange={() => editor?.chain().focus().toggleStrike().run()}
-        >
-          <Strikethrough className="h-4 w-4" />
-        </Toggle>
-        <Toggle
-          pressed={editor?.isActive("code") ?? false}
-          onPressedChange={() => editor?.chain().focus().toggleCode().run()}
-        >
-          <Code className="h-4 w-4" />
-        </Toggle>
+          <Select onValueChange={(value) => setFontSize(value)}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Size" />
+            </SelectTrigger>
+            <SelectContent>
+              {fontSizes.map((size) => (
+                <SelectItem key={size} value={size}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Lists */}
-        <Toggle
-          pressed={editor?.isActive("bulletList") ?? false}
-          onPressedChange={() =>
-            editor?.chain().focus().toggleBulletList().run()
-          }
-        >
-          <List className="h-4 w-4" />
-        </Toggle>
+          {/* Update the Text Color control */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="relative">
+                <Type className="h-4 w-4" />
+                <div
+                  className="absolute bottom-0 left-1/2 h-1 w-4 -translate-x-1/2 rounded-t-sm"
+                  style={{
+                    backgroundColor:
+                      editor?.getAttributes("textStyle").color || "#000000",
+                  }}
+                />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <div className="grid grid-cols-5 gap-2">
+                {colorPresets.map((color) => (
+                  <button
+                    key={color.value}
+                    className="relative h-8 w-8 rounded-md border border-muted hover:scale-105 transition"
+                    style={{ backgroundColor: color.value }}
+                    title={color.label}
+                    onClick={() => {
+                      editor?.chain().focus().setColor(color.value).run();
+                    }}
+                  >
+                    {editor?.isActive("textStyle", { color: color.value }) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-2 w-2 rounded-full bg-white shadow-sm" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-        {/* Alignment */}
-        <Toggle
-          pressed={editor?.isActive({ textAlign: "left" }) ?? false}
-          onPressedChange={() =>
-            editor?.chain().focus().setTextAlign("left").run()
-          }
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Toggle>
-        <Toggle
-          pressed={editor?.isActive({ textAlign: "center" }) ?? false}
-          onPressedChange={() =>
-            editor?.chain().focus().setTextAlign("center").run()
-          }
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Toggle>
-        <Toggle
-          pressed={editor?.isActive({ textAlign: "right" }) ?? false}
-          onPressedChange={() =>
-            editor?.chain().focus().setTextAlign("right").run()
-          }
-        >
-          <AlignRight className="h-4 w-4" />
-        </Toggle>
+          {/* Text Formatting */}
+          <Toggle
+            pressed={editor?.isActive("bold") ?? false}
+            onPressedChange={() => editor?.chain().focus().toggleBold().run()}
+          >
+            <Bold className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive("italic") ?? false}
+            onPressedChange={() => editor?.chain().focus().toggleItalic().run()}
+          >
+            <Italic className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive("underline") ?? false}
+            onPressedChange={() =>
+              editor?.chain().focus().toggleUnderline().run()
+            }
+          >
+            <Underline className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive("strike") ?? false}
+            onPressedChange={() => editor?.chain().focus().toggleStrike().run()}
+          >
+            <Strikethrough className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive("code") ?? false}
+            onPressedChange={() => editor?.chain().focus().toggleCode().run()}
+          >
+            <Code className="h-4 w-4" />
+          </Toggle>
 
-        {/* Update the Table Controls section */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="icon">
-              <TableIcon className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 grid gap-2">
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={insertTable} variant="outline" size="sm">
-                Insert Table
+          {/* Lists */}
+          <Toggle
+            pressed={editor?.isActive("bulletList") ?? false}
+            onPressedChange={() =>
+              editor?.chain().focus().toggleBulletList().run()
+            }
+          >
+            <List className="h-4 w-4" />
+          </Toggle>
+
+          {/* Alignment */}
+          <Toggle
+            pressed={editor?.isActive({ textAlign: "left" }) ?? false}
+            onPressedChange={() =>
+              editor?.chain().focus().setTextAlign("left").run()
+            }
+          >
+            <AlignLeft className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive({ textAlign: "center" }) ?? false}
+            onPressedChange={() =>
+              editor?.chain().focus().setTextAlign("center").run()
+            }
+          >
+            <AlignCenter className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive({ textAlign: "right" }) ?? false}
+            onPressedChange={() =>
+              editor?.chain().focus().setTextAlign("right").run()
+            }
+          >
+            <AlignRight className="h-4 w-4" />
+          </Toggle>
+
+          {/* Update the Table Controls section */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon">
+                <TableIcon className="h-4 w-4" />
               </Button>
-              <Button onClick={deleteTable} variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 mr-1" /> Table
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={addColumnBefore} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Col Before
-              </Button>
-              <Button onClick={addColumnAfter} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Col After
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={addRowBefore} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Row Before
-              </Button>
-              <Button onClick={addRowAfter} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Row After
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button onClick={deleteColumn} variant="outline" size="sm">
-                <Minus className="h-4 w-4 mr-1" /> Column
-              </Button>
-              <Button onClick={deleteRow} variant="outline" size="sm">
-                <Minus className="h-4 w-4 mr-1" /> Row
-              </Button>
-            </div>
-            <Select
-              onValueChange={(value) => {
-                const style = document.createElement("style");
-                style.textContent = `
+            </PopoverTrigger>
+            <PopoverContent className="w-72 grid gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={insertTable} variant="outline" size="sm">
+                  Insert Table
+                </Button>
+                <Button onClick={deleteTable} variant="outline" size="sm">
+                  <Trash2 className="h-4 w-4 mr-1" /> Table
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={addColumnBefore} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" /> Col Before
+                </Button>
+                <Button onClick={addColumnAfter} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" /> Col After
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={addRowBefore} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" /> Row Before
+                </Button>
+                <Button onClick={addRowAfter} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" /> Row After
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={deleteColumn} variant="outline" size="sm">
+                  <Minus className="h-4 w-4 mr-1" /> Column
+                </Button>
+                <Button onClick={deleteRow} variant="outline" size="sm">
+                  <Minus className="h-4 w-4 mr-1" /> Row
+                </Button>
+              </div>
+              <Select
+                onValueChange={(value) => {
+                  const style = document.createElement("style");
+                  style.textContent = `
                   .ProseMirror table td,
                   .ProseMirror table th {
                     border-width: ${value};
                   }
                 `;
-                document.head.appendChild(style);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Border width" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1px">Thin</SelectItem>
-                <SelectItem value="2px">Medium</SelectItem>
-                <SelectItem value="3px">Thick</SelectItem>
-              </SelectContent>
-            </Select>
-          </PopoverContent>
-        </Popover>
+                  document.head.appendChild(style);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Border width" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1px">Thin</SelectItem>
+                  <SelectItem value="2px">Medium</SelectItem>
+                  <SelectItem value="3px">Thick</SelectItem>
+                </SelectContent>
+              </Select>
+            </PopoverContent>
+          </Popover>
 
-        {/* Replace the old image button with the new dialog */}
-        <ImageUploadDialog onImageSelected={handleImageSelected} />
+          {/* Replace the old image button with the new dialog */}
+          <ImageUploadDialog onImageSelected={handleImageSelected} />
 
-        {/* Add Variables Dropdown */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              Insert Variable
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56">
-            <div className="grid gap-1">
-              {variables.map((variable) => (
-                <Button
-                  key={variable}
-                  variant="ghost"
-                  className="justify-start font-mono text-sm"
-                  onClick={() => insertVariable(variable)}
-                >
-                  ${"{" + variable + "}"}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          {/* Add Variables Dropdown */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                Insert Variable
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
+              <div className="grid gap-1">
+                {variables.map((variable) => (
+                  <Button
+                    key={variable}
+                    variant="ghost"
+                    className="justify-start font-mono text-sm"
+                    onClick={() => insertVariable(variable)}
+                  >
+                    ${"{" + variable + "}"}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {!editor ? null : (
+          <EditorContent
+            editor={editor}
+            className="min-h-[400px] border rounded-lg p-4 prose max-w-none dark:prose-invert"
+          />
+        )}
       </div>
+    );
+  }
+);
 
-      {!editor ? null : (
-        <EditorContent
-          editor={editor}
-          className="min-h-[400px] border rounded-lg p-4 prose max-w-none dark:prose-invert"
-        />
-      )}
-    </div>
-  );
-}
+Editor.displayName = "Editor";
+
+export default Editor;

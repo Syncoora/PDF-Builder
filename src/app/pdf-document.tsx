@@ -151,7 +151,7 @@ function extractTables(html: string): {
   return { tables, contentWithoutTables };
 }
 
-// Modify the processContent function to preserve text alignment
+// Modify the processContent function to better capture text alignment
 const processContent = (text: string) => {
   // Extract alignment information before removing HTML tags
   const alignmentMap: { [key: string]: string } = {};
@@ -159,26 +159,27 @@ const processContent = (text: string) => {
 
   // Replace paragraphs and headings with alignment placeholders
   const textWithPlaceholders = text
+    // Handle style-based alignment
     .replace(
-      /<(p|h[1-6])[^>]*style="[^"]*text-align:\s*([^;"\s]+)[^"]*"[^>]*>(.*?)<\/\1>/gi,
+      /<(p|h[1-6]|div)[^>]*style="[^"]*text-align:\s*([^;"\s]+)[^"]*"[^>]*>(.*?)<\/\1>/gi,
       (match, tag, align, content) => {
         const id = `ALIGN_${counter++}`;
         alignmentMap[id] = align;
         return `${id}${content}${id}\n\n`;
       }
     )
-    // Handle div with text-align
+    // Handle class-based alignment from TipTap (text-align-center, text-align-right, etc.)
     .replace(
-      /<div[^>]*style="[^"]*text-align:\s*([^;"\s]+)[^"]*"[^>]*>(.*?)<\/div>/gi,
-      (match, align, content) => {
+      /<(p|h[1-6]|div)[^>]*class="[^"]*text-align-([^"\s]+)[^"]*"[^>]*>(.*?)<\/\1>/gi,
+      (match, tag, align, content) => {
         const id = `ALIGN_${counter++}`;
         alignmentMap[id] = align;
         return `${id}${content}${id}\n\n`;
       }
     )
-    // Handle text-align class from TipTap (ProseMirror)
+    // Handle HTML align attribute (older style)
     .replace(
-      /<(p|h[1-6]|div)[^>]*class="[^"]*text-align-([^"\s]+)[^"]*"[^>]*>(.*?)<\/\1>/gi,
+      /<(p|h[1-6]|div)[^>]*align="([^"]+)"[^>]*>(.*?)<\/\1>/gi,
       (match, tag, align, content) => {
         const id = `ALIGN_${counter++}`;
         alignmentMap[id] = align;
@@ -307,8 +308,11 @@ export function PDFDocument({
     },
   });
 
-  // Helper function to process text with alignment markers
-  const processTextWithAlignment = (text: string) => {
+  // Update the processTextWithAlignment function to better handle alignment
+  const processTextWithAlignment = (
+    text: string,
+    alignmentMap: { [key: string]: string }
+  ) => {
     // Split by alignment markers
     const parts = text.split(/ALIGN_\d+/);
     const alignmentMarkers = text.match(/ALIGN_\d+/g) || [];
@@ -322,14 +326,23 @@ export function PDFDocument({
 
     for (let i = 0; i < parts.length; i++) {
       if (parts[i]) {
-        if (i === 0 || i === parts.length - 1) {
-          // First or last part without alignment
+        if (i === 0) {
+          // First part without alignment
           elements.push(
             <Text key={`text-${i}`} style={styles.content}>
               {parts[i]}
             </Text>
           );
-        } else if (i % 2 === 1) {
+        } else if (i === parts.length - 1) {
+          // Last part without alignment
+          if (parts[i].trim()) {
+            elements.push(
+              <Text key={`text-${i}`} style={styles.content}>
+                {parts[i]}
+              </Text>
+            );
+          }
+        } else {
           // Content with alignment
           const alignMarker = alignmentMarkers[Math.floor(currentIndex / 2)];
           const alignValue = alignmentMap[alignMarker];
@@ -343,11 +356,13 @@ export function PDFDocument({
             styleToUse = styles.contentLeft;
           }
 
-          elements.push(
-            <Text key={`text-${i}`} style={styleToUse}>
-              {parts[i]}
-            </Text>
-          );
+          if (parts[i].trim()) {
+            elements.push(
+              <Text key={`text-${i}`} style={styleToUse}>
+                {parts[i]}
+              </Text>
+            );
+          }
 
           currentIndex++;
         }
@@ -357,14 +372,16 @@ export function PDFDocument({
     return elements;
   };
 
-  // Render content with tables
+  // Update the renderContent function to pass alignmentMap to processTextWithAlignment
   const renderContent = () => {
     const elements = [];
 
     // First part of content (before first table)
     if (contentParts.length > 0) {
       elements.push(
-        <View key="content-0">{processTextWithAlignment(contentParts[0])}</View>
+        <View key="content-0">
+          {processTextWithAlignment(contentParts[0], alignmentMap)}
+        </View>
       );
     }
 
@@ -410,7 +427,7 @@ export function PDFDocument({
         // Add content after table
         elements.push(
           <View key={`content-${i + 1}`}>
-            {processTextWithAlignment(contentParts[i + 1])}
+            {processTextWithAlignment(contentParts[i + 1], alignmentMap)}
           </View>
         );
       }

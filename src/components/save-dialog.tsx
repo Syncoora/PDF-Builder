@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -12,16 +12,21 @@ import { SaveIcon } from "lucide-react"
 interface SaveDialogProps {
   onSave: (title: string) => void
   trigger?: React.ReactNode
+  initialTitle?: string
 }
 
-export function SaveDialog({ onSave, trigger }: SaveDialogProps) {
-  const [title, setTitle] = useState("")
+export function SaveDialog({ onSave, trigger, initialTitle = "" }: SaveDialogProps) {
+  const [title, setTitle] = useState(initialTitle)
   const [open, setOpen] = useState(false)
+
+  // Update title when initialTitle changes
+  useEffect(() => {
+    setTitle(initialTitle)
+  }, [initialTitle])
 
   const handleSave = () => {
     if (title.trim()) {
       onSave(title.trim())
-      setTitle("")
       setOpen(false)
     }
   }
@@ -37,7 +42,7 @@ export function SaveDialog({ onSave, trigger }: SaveDialogProps) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Save Document</DialogTitle>
+          <DialogTitle>{initialTitle ? "Update Document" : "Save Document"}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
@@ -50,7 +55,7 @@ export function SaveDialog({ onSave, trigger }: SaveDialogProps) {
             />
           </div>
           <Button onClick={handleSave} disabled={!title.trim()}>
-            Save
+            {initialTitle ? "Update" : "Save"}
           </Button>
         </div>
       </DialogContent>
