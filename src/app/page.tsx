@@ -55,6 +55,7 @@ export default function TextEditorPage() {
   );
   const { toast } = useToast();
   const editorRef = useRef<EditorRef>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   // Load saved documents on mount
   useEffect(() => {
@@ -180,8 +181,8 @@ export default function TextEditorPage() {
     });
   };
 
+  // Update the handleDownloadPDF function to ensure tables are properly captured
   const handleDownloadPDF = async (doc?: SavedDocument) => {
-    // Always get the most current content directly from the editor when downloading the current document
     let contentToDownload: string;
     let metaToUse = meta;
     let titleToUse = currentDocument?.title || "document";
@@ -194,6 +195,12 @@ export default function TextEditorPage() {
     } else {
       // For the current document, get content directly from the editor
       contentToDownload = editorRef.current?.getContent() || content;
+
+      // Make sure we're using the latest content
+      if (editorRef.current) {
+        const currentContent = editorRef.current.getContent();
+        setContent(currentContent);
+      }
     }
 
     if (!contentToDownload.trim()) {
@@ -217,7 +224,19 @@ export default function TextEditorPage() {
         }
       );
 
-      // Generate PDF blob
+      // Update the preview element with the latest content to ensure tables are rendered
+      if (previewRef.current) {
+        const tableContainer =
+          previewRef.current.querySelector(".table-container");
+        if (tableContainer) {
+          tableContainer.innerHTML = processedContent;
+        }
+
+        // Give a small delay to ensure the DOM is updated
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Generate the PDF
       const blob = await createPDF({
         content: processedContent,
         theme: pdfTheme,
@@ -395,6 +414,7 @@ export default function TextEditorPage() {
         </Card>
         <Card className="p-4 bg-white">
           <div
+            ref={previewRef}
             className={`prose max-w-none dark:prose-invert min-h-[400px] pdf-preview theme-${pdfTheme}`}
           >
             <div
