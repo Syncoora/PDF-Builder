@@ -151,6 +151,58 @@ function extractTables(html: string): {
   return { tables, contentWithoutTables };
 }
 
+// Update the extractLists function to handle both unordered and ordered lists
+function extractLists(html: string): {
+  lists: any[];
+  contentWithoutLists: string;
+} {
+  const lists: any[] = [];
+
+  // First handle unordered lists
+  const contentWithoutUL = html.replace(
+    /<ul[^>]*>([\s\S]*?)<\/ul>/gi,
+    (match, listContent) => {
+      // Extract list items
+      const items: { content: string; type: "ul" | "ol" }[] = [];
+      const itemMatches = listContent.match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+
+      if (itemMatches) {
+        itemMatches.forEach((itemMatch) => {
+          // Extract item content without HTML tags
+          const itemContent = itemMatch.replace(/<[^>]*>/g, "").trim();
+          items.push({ content: itemContent, type: "ul" });
+        });
+      }
+
+      lists.push(items);
+      return `[LIST_${lists.length - 1}]`; // Replace with placeholder
+    }
+  );
+
+  // Then handle ordered lists
+  const contentWithoutLists = contentWithoutUL.replace(
+    /<ol[^>]*>([\s\S]*?)<\/ol>/gi,
+    (match, listContent) => {
+      // Extract list items
+      const items: { content: string; type: "ul" | "ol" }[] = [];
+      const itemMatches = listContent.match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+
+      if (itemMatches) {
+        itemMatches.forEach((itemMatch) => {
+          // Extract item content without HTML tags
+          const itemContent = itemMatch.replace(/<[^>]*>/g, "").trim();
+          items.push({ content: itemContent, type: "ol" });
+        });
+      }
+
+      lists.push(items);
+      return `[LIST_${lists.length - 1}]`; // Replace with placeholder
+    }
+  );
+
+  return { lists, contentWithoutLists };
+}
+
 // Modify the processContent function to better capture text alignment
 const processContent = (text: string) => {
   // Extract alignment information before removing HTML tags
@@ -165,7 +217,7 @@ const processContent = (text: string) => {
       (match, tag, align, content) => {
         const id = `ALIGN_${counter++}`;
         alignmentMap[id] = align;
-        return `${id}${content}${id}\n\n`;
+        return `${id}${content}${id}\n`;
       }
     )
     // Handle class-based alignment from TipTap (text-align-center, text-align-right, etc.)
@@ -174,7 +226,7 @@ const processContent = (text: string) => {
       (match, tag, align, content) => {
         const id = `ALIGN_${counter++}`;
         alignmentMap[id] = align;
-        return `${id}${content}${id}\n\n`;
+        return `${id}${content}${id}\n`;
       }
     )
     // Handle HTML align attribute (older style)
@@ -183,16 +235,17 @@ const processContent = (text: string) => {
       (match, tag, align, content) => {
         const id = `ALIGN_${counter++}`;
         alignmentMap[id] = align;
-        return `${id}${content}${id}\n\n`;
+        return `${id}${content}${id}\n`;
       }
     );
 
   // Process the content as before
   const processedText = textWithPlaceholders
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<p[^>]*>(.*?)<\/p>/gi, "$1\n\n")
-    .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, "$1\n\n")
-    .replace(/<li[^>]*>(.*?)<\/li>/gi, "• $1\n")
+    .replace(/<p[^>]*>(.*?)<\/p>/gi, "$1\n")
+    .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, "$1\n")
+    // We'll handle list items separately, so we don't need this line anymore
+    // .replace(/<li[^>]*>(.*?)<\/li>/gi, "• $1\n")
     .replace(/<[^>]*>/g, "") // Remove remaining HTML tags
     .replace(/&nbsp;/g, " ") // Replace &nbsp; with spaces
     .replace(/\n\s*\n\s*\n/g, "\n\n") // Normalize multiple line breaks
@@ -214,9 +267,12 @@ export function PDFDocument({
   // Extract tables and get content without tables
   const { tables, contentWithoutTables } = extractTables(content);
 
+  // Extract lists and get content without lists
+  const { lists, contentWithoutLists } = extractLists(contentWithoutTables);
+
   // Process variables in content
   const contentWithVars = interpolateVariables(
-    contentWithoutTables,
+    contentWithoutLists,
     templateData
   );
 
@@ -225,6 +281,36 @@ export function PDFDocument({
 
   // Split content by table placeholders
   const contentParts = processedText.split(/\[TABLE_(\d+)\]/);
+
+  // Further split by list placeholders
+  const allContentParts: string[] = [];
+  const allPlaceholders: { type: "table" | "list"; index: number }[] = [];
+
+  // Process all content parts and identify placeholders
+  contentParts.forEach((part, i) => {
+    if (i % 2 === 0) {
+      // This is a content part
+      const listParts = part.split(/\[LIST_(\d+)\]/);
+
+      listParts.forEach((listPart, j) => {
+        if (j % 2 === 0) {
+          // This is a content part
+          allContentParts.push(listPart);
+        } else {
+          // This is a list placeholder
+          allContentParts.push(""); // Add empty string as content
+          allPlaceholders.push({
+            type: "list",
+            index: Number.parseInt(listPart, 10),
+          });
+        }
+      });
+    } else {
+      // This is a table placeholder
+      allContentParts.push(""); // Add empty string as content
+      allPlaceholders.push({ type: "table", index: Number.parseInt(part, 10) });
+    }
+  });
 
   const styles = StyleSheet.create({
     page: {
@@ -236,27 +322,26 @@ export function PDFDocument({
       color: selectedTheme.fontColor,
     },
     section: {
-      margin: 10,
-      padding: 10,
+      padding: 0,
       flexGrow: 1,
     },
     content: {
-      marginBottom: 10,
-      lineHeight: 1.5,
+      marginBottom: 4, // Reduced from 10
+      lineHeight: 1.3, // Reduced from 1.5
     },
     contentLeft: {
-      marginBottom: 10,
-      lineHeight: 1.5,
+      marginBottom: 4, // Reduced from 10
+      lineHeight: 1.3, // Reduced from 1.5
       textAlign: "left",
     },
     contentCenter: {
-      marginBottom: 10,
-      lineHeight: 1.5,
+      marginBottom: 4, // Reduced from 10
+      lineHeight: 1.3, // Reduced from 1.5
       textAlign: "center",
     },
     contentRight: {
-      marginBottom: 10,
-      lineHeight: 1.5,
+      marginBottom: 4, // Reduced from 10
+      lineHeight: 1.3, // Reduced from 1.5
       textAlign: "right",
     },
     metadata: {
@@ -277,7 +362,7 @@ export function PDFDocument({
       borderStyle: "solid",
       borderWidth: 1,
       borderColor: selectedTheme.tableBorderColor,
-      marginVertical: 10,
+      marginVertical: 6, // Reduced from 10
     },
     tableRow: {
       flexDirection: "row",
@@ -305,6 +390,20 @@ export function PDFDocument({
     },
     lastRow: {
       borderBottomWidth: 0,
+    },
+    list: {
+      marginVertical: 3, // Reduced from 5
+    },
+    listItem: {
+      flexDirection: "row",
+      marginBottom: 2, // Reduced from 5
+    },
+    listItemBullet: {
+      width: 15,
+      marginRight: 5,
+    },
+    listItemContent: {
+      flex: 1,
     },
   });
 
@@ -372,64 +471,89 @@ export function PDFDocument({
     return elements;
   };
 
-  // Update the renderContent function to pass alignmentMap to processTextWithAlignment
+  // Update the renderList function to handle both unordered and ordered lists
+  const renderList = (items: { content: string; type: "ul" | "ol" }[]) => {
+    // Check if this is an ordered list
+    const isOrderedList = items.length > 0 && items[0].type === "ol";
+
+    return (
+      <View style={styles.list}>
+        {items.map((item, index) => (
+          <View key={`list-item-${index}`} style={styles.listItem}>
+            <Text style={styles.listItemBullet}>
+              {isOrderedList ? `${index + 1}.` : "•"}
+            </Text>
+            <Text style={styles.listItemContent}>{item.content}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  // Update the renderContent function to handle both tables and lists
   const renderContent = () => {
     const elements = [];
 
-    // First part of content (before first table)
-    if (contentParts.length > 0) {
-      elements.push(
-        <View key="content-0">
-          {processTextWithAlignment(contentParts[0], alignmentMap)}
-        </View>
-      );
-    }
-
-    // Render tables and content parts
-    for (let i = 1; i < contentParts.length; i += 2) {
-      if (i < contentParts.length - 1) {
-        const tableIndex = Number.parseInt(contentParts[i], 10);
-        const table = tables[tableIndex];
-
-        if (table && table.length > 0) {
-          // Render table
-          elements.push(
-            <View key={`table-${tableIndex}`} style={styles.table}>
-              {table.map((row, rowIndex) => (
-                <View
-                  key={`row-${rowIndex}`}
-                  style={[
-                    styles.tableRow,
-                    rowIndex === 0 && row.some((cell) => cell.isHeader)
-                      ? styles.tableHeaderRow
-                      : null,
-                    rowIndex === table.length - 1 ? styles.lastRow : null,
-                  ]}
-                >
-                  {row.map((cell, cellIndex) => (
-                    <Text
-                      key={`cell-${rowIndex}-${cellIndex}`}
-                      style={[
-                        styles.tableCell,
-                        cell.isHeader ? styles.tableHeaderCell : null,
-                        cellIndex === row.length - 1 ? styles.lastCell : null,
-                      ]}
-                    >
-                      {cell.content}
-                    </Text>
-                  ))}
-                </View>
-              ))}
-            </View>
-          );
-        }
-
-        // Add content after table
+    // Render content parts, tables, and lists
+    for (let i = 0; i < allContentParts.length; i++) {
+      // Render content part
+      if (allContentParts[i]) {
         elements.push(
-          <View key={`content-${i + 1}`}>
-            {processTextWithAlignment(contentParts[i + 1], alignmentMap)}
+          <View key={`content-${i}`}>
+            {processTextWithAlignment(allContentParts[i], alignmentMap)}
           </View>
         );
+      }
+
+      // Render placeholder if there is one
+      if (i < allPlaceholders.length) {
+        const placeholder = allPlaceholders[i];
+
+        if (placeholder.type === "table") {
+          // Render table
+          const table = tables[placeholder.index];
+
+          if (table && table.length > 0) {
+            elements.push(
+              <View key={`table-${placeholder.index}`} style={styles.table}>
+                {table.map((row, rowIndex) => (
+                  <View
+                    key={`row-${rowIndex}`}
+                    style={[
+                      styles.tableRow,
+                      rowIndex === 0 && row.some((cell) => cell.isHeader)
+                        ? styles.tableHeaderRow
+                        : null,
+                      rowIndex === table.length - 1 ? styles.lastRow : null,
+                    ]}
+                  >
+                    {row.map((cell, cellIndex) => (
+                      <Text
+                        key={`cell-${rowIndex}-${cellIndex}`}
+                        style={[
+                          styles.tableCell,
+                          cell.isHeader ? styles.tableHeaderCell : null,
+                          cellIndex === row.length - 1 ? styles.lastCell : null,
+                        ]}
+                      >
+                        {cell.content}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            );
+          }
+        } else if (placeholder.type === "list") {
+          // Render list
+          const list = lists[placeholder.index];
+
+          if (list && list.length > 0) {
+            elements.push(
+              <View key={`list-${placeholder.index}`}>{renderList(list)}</View>
+            );
+          }
+        }
       }
     }
 

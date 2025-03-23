@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Set Inter as the default font */
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -27,6 +34,21 @@
   border-radius: 0.5rem;
 }
 
+/* Remove margins from paragraph tags */
+.ProseMirror p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  margin: 0.7em 0 0.5em; /* Reduced from default */
+}
+
 /* Add styles for text colors */
 [style*="color"] {
   color: var(--tw-prose-body);
@@ -35,7 +57,7 @@
 /* Table styles */
 .ProseMirror table {
   border-collapse: collapse;
-  margin: 0;
+  margin: 0.5em 0; /* Reduced from default */
   overflow: hidden;
   table-layout: fixed;
   width: 100%;
@@ -82,11 +104,40 @@
   text-align: right;
 }
 
+/* List styles for the editor */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0; /* Reduced from 1em */
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0; /* Reduced from 1em */
+}
+
+.ProseMirror li {
+  margin-bottom: 0.2em; /* Reduced from 0.5em */
+  position: relative;
+}
+
+.ProseMirror li p {
+  margin: 0;
+}
+
+/* Fix for editor */
+.ProseMirror ul li::marker,
+.ProseMirror ol li::marker {
+  display: inline-block;
+  color: currentColor;
+}
+
 /* Preview table styles */
 .prose table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0;
+  margin: 0.5rem 0; /* Reduced from 1rem */
   overflow-x: auto;
 }
 
@@ -119,6 +170,40 @@
   background-color: #2d3748;
 }
 
+/* List styles for the preview */
+.prose ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0; /* Reduced from 1em */
+}
+
+.prose ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0; /* Reduced from 1em */
+}
+
+.prose li {
+  margin-bottom: 0.2em; /* Reduced from 0.5em */
+}
+
+.prose li p {
+  margin: 0;
+}
+
+/* Remove margins from paragraph tags in preview */
+.prose p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Fix for prose content */
+.prose ul li::marker,
+.prose ol li::marker {
+  display: inline-block;
+  color: currentColor;
+}
+
 /* Text alignment styles for the preview */
 .prose .text-align-left {
   text-align: left;
@@ -143,6 +228,40 @@
 
 .pdf-preview .text-align-right {
   text-align: right;
+}
+
+/* List styles for the PDF preview */
+.pdf-preview ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0; /* Reduced from 1em */
+}
+
+.pdf-preview ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0; /* Reduced from 1em */
+}
+
+.pdf-preview li {
+  margin-bottom: 0.2em; /* Reduced from 0.5em */
+}
+
+.pdf-preview li p {
+  margin: 0;
+}
+
+/* Remove margins from paragraph tags in PDF preview */
+.pdf-preview p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Fix for PDF preview */
+.pdf-preview ul li::marker,
+.pdf-preview ol li::marker {
+  display: inline-block;
+  color: currentColor;
 }
 
 /* Add styles for color picker */
@@ -196,7 +315,7 @@
 .pdf-preview table {
   width: 100%;
   border-collapse: collapse;
-  margin: 10px 0;
+  margin: 0.5em 0; /* Reduced from 10px */
 }
 
 .pdf-preview table th,
@@ -260,3 +379,38 @@
   background-color: #e6f0ff;
 }
 
+/* Add these styles to ensure list markers are visible */
+ul,
+ol {
+  list-style-position: outside;
+  padding-left: 1.5em;
+}
+
+/* Explicitly style the marker pseudo-element */
+li::marker {
+  color: currentColor;
+  font-size: 1em;
+  display: inline-block;
+}
+
+/* Ensure list styles aren't being reset */
+ul {
+  list-style-type: disc;
+}
+
+ol {
+  list-style-type: decimal;
+}
+
+/* Remove margin-top and margin-bottom from all p tags */
+p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Adjust line height for better spacing */
+.ProseMirror,
+.prose,
+.pdf-preview {
+  line-height: 1.3;
+}

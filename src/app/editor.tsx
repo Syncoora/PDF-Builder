@@ -33,6 +33,7 @@ import {
   Strikethrough,
   Code,
   List,
+  ListOrdered,
   TableIcon,
   AlignLeft,
   AlignCenter,
@@ -57,28 +58,36 @@ import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import CharacterCount from "@tiptap/extension-character-count";
 import FontFamily from "@tiptap/extension-font-family";
 import UnderlineExtension from "@tiptap/extension-underline";
-// Replace @tiptap/extension-font-size with a custom extension
 import { Extension } from "@tiptap/core";
 
 // Create a custom font size extension
-const CustomFontSize = Extension.create({
-  name: "customFontSize",
+const FontSize = Extension.create({
+  name: "fontSize",
+
+  addOptions() {
+    return {
+      types: ["textStyle"],
+    };
+  },
 
   addGlobalAttributes() {
     return [
       {
-        types: ["textStyle"],
+        types: this.options.types,
         attributes: {
           fontSize: {
             default: null,
-            parseHTML: (element) => element.style.fontSize,
+            parseHTML: (element) =>
+              element.style.fontSize?.replace(/['"]+/g, ""),
             renderHTML: (attributes) => {
               if (!attributes.fontSize) {
                 return {};
               }
 
               return {
-                style: `font-size: ${attributes.fontSize}`,
+                style: `font-size: ${attributes.fontSize}${
+                  /^\d+$/.test(attributes.fontSize) ? "px" : ""
+                }`,
               };
             },
           },
@@ -292,7 +301,16 @@ const Editor = forwardRef<EditorRef, EditorProps>(
     // Create a new editor instance when content changes
     const editor = useEditor({
       extensions: [
-        StarterKit,
+        StarterKit.configure({
+          bulletList: {
+            keepMarks: true,
+            keepAttributes: true,
+          },
+          orderedList: {
+            keepMarks: true,
+            keepAttributes: true,
+          },
+        }),
         Table.configure({
           resizable: true,
         }),
@@ -314,13 +332,35 @@ const Editor = forwardRef<EditorRef, EditorProps>(
           types: ["textStyle"],
         }),
         UnderlineExtension,
-        // Use our custom font size extension
-        CustomFontSize,
+        // Use our updated font size extension
+        FontSize.configure({
+          types: ["textStyle"],
+        }),
       ],
       content,
       onUpdate: ({ editor }) => {
         const html = editor.getHTML();
         onChange(html);
+
+        // Also update the preview immediately
+        const previewElement = document.querySelector(".table-container");
+        if (previewElement) {
+          // Process variables in content
+          const processedContent = html.replace(/\${(\w+)}/g, (match, key) => {
+            const sampleData = {
+              name: "test name",
+              quantity: 3,
+              price: 10,
+              orderId: "ORD-123",
+              date: "2024-02-21",
+              customerEmail: "test@example.com",
+            };
+            const value = sampleData[key];
+            return value != null ? String(value) : match;
+          });
+          previewElement.innerHTML = processedContent;
+        }
+
         onUpdateMeta({
           wordCount: editor.storage?.characterCount?.words?.() ?? 0,
           charCount: editor.storage?.characterCount?.characters?.() ?? 0,
@@ -356,7 +396,7 @@ const Editor = forwardRef<EditorRef, EditorProps>(
 
     // Add this helper function for font size commands
     const setFontSize = (size: string) => {
-      editor?.chain().focus().setFontSize(`${size}px`).run();
+      editor?.chain().focus().setFontSize(size).run();
     };
 
     const insertTable = () => {
@@ -522,6 +562,14 @@ const Editor = forwardRef<EditorRef, EditorProps>(
             }
           >
             <List className="h-4 w-4" />
+          </Toggle>
+          <Toggle
+            pressed={editor?.isActive("orderedList") ?? false}
+            onPressedChange={() =>
+              editor?.chain().focus().toggleOrderedList().run()
+            }
+          >
+            <ListOrdered className="h-4 w-4" />
           </Toggle>
 
           {/* Alignment */}
