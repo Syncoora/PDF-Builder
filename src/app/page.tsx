@@ -57,6 +57,9 @@ export default function TextEditorPage() {
   const editorRef = useRef<EditorRef>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  // Add a new state variable to track preview visibility
+  const [previewVisible, setPreviewVisible] = useState(false);
+
   // Load saved documents on mount
   useEffect(() => {
     setDocuments(getSavedDocuments());
@@ -300,6 +303,11 @@ export default function TextEditorPage() {
     }
   }, [pdfTheme]);
 
+  // Add a toggle function for the preview
+  const togglePreview = () => {
+    setPreviewVisible(!previewVisible);
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -389,12 +397,24 @@ export default function TextEditorPage() {
             <Download className="w-4 w-4 mr-2" />
             {isGeneratingPDF ? "Generating..." : "Download PDF"}
           </Button>
+          {/* Add this button after the "Download PDF" button but before the theme toggle: */}
+          <Button onClick={togglePreview} variant="outline">
+            {previewVisible ? "Hide Preview" : "Show Preview"}
+          </Button>
           <div className="border-l pl-4">
             <ThemeToggle />
           </div>
         </div>
       </div>
-      <div className="grid lg:grid-cols-2 gap-4">
+      {/* Update the grid layout to be responsive to the preview visibility */}
+      {/* Replace the existing grid div with this: */}
+      <div
+        className={
+          previewVisible
+            ? "grid lg:grid-cols-2 gap-4"
+            : "grid grid-cols-1 gap-4"
+        }
+      >
         <Card className="p-4">
           <Suspense
             fallback={
@@ -412,17 +432,20 @@ export default function TextEditorPage() {
             />
           </Suspense>
         </Card>
-        <Card className="p-4 bg-white">
-          <div
-            ref={previewRef}
-            className={`prose max-w-none dark:prose-invert min-h-[400px] pdf-preview theme-${pdfTheme}`}
-          >
+
+        {previewVisible && (
+          <Card className="p-4 bg-white">
             <div
-              className="table-container"
-              dangerouslySetInnerHTML={{ __html: processedContent }}
-            />
-          </div>
-        </Card>
+              ref={previewRef}
+              className={`prose max-w-none dark:prose-invert min-h-[400px] pdf-preview theme-${pdfTheme}`}
+            >
+              <div
+                className="table-container"
+                dangerouslySetInnerHTML={{ __html: processedContent }}
+              />
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

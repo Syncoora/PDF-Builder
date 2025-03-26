@@ -1,0 +1,13 @@
+.prose p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}
+
+.ProseMirror {
+  min-height: 400px;
+  padding: 1rem;
+}
