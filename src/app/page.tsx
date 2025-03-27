@@ -3,7 +3,7 @@
 import { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Info, Save } from "lucide-react";
+import { Download, Info, Save, FileText } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { ThemeSelector } from "./theme-selector";
 import {
@@ -397,8 +397,9 @@ export default function TextEditorPage() {
             <Download className="w-4 w-4 mr-2" />
             {isGeneratingPDF ? "Generating..." : "Download PDF"}
           </Button>
-          {/* Add this button after the "Download PDF" button but before the theme toggle: */}
+          {/* Update the preview toggle button with an icon */}
           <Button onClick={togglePreview} variant="outline">
+            <FileText className="h-4 w-4 mr-2" />
             {previewVisible ? "Hide Preview" : "Show Preview"}
           </Button>
           <div className="border-l pl-4">
@@ -407,7 +408,6 @@ export default function TextEditorPage() {
         </div>
       </div>
       {/* Update the grid layout to be responsive to the preview visibility */}
-      {/* Replace the existing grid div with this: */}
       <div
         className={
           previewVisible

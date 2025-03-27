@@ -16,7 +16,7 @@ interface PDFDocumentProps {
   templateData?: TemplateData;
 }
 
-// Update the createPDF function to fix the duplicate markers issue
+// Update the createPDF function to prevent content breaking across pages
 export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
   try {
     // Create a temporary container to render the HTML content
@@ -52,6 +52,7 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
         width: 100%;
         border-collapse: collapse;
         margin: 0.5em 0;
+        page-break-inside: avoid; /* Prevent tables from breaking across pages */
       }
       
       table th,
@@ -75,12 +76,24 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
         padding-left: 0;
         margin: 0.5em 0;
         list-style-type: none;
+        page-break-inside: avoid; /* Prevent lists from breaking across pages */
       }
       
       li {
         position: relative;
         padding-left: 1.5em;
         margin-bottom: 0.2em;
+      }
+      
+      /* Prevent paragraphs from breaking across pages */
+      p {
+        page-break-inside: avoid;
+      }
+      
+      /* Prevent headings from breaking across pages and ensure they're not at the bottom of a page */
+      h1, h2, h3, h4, h5, h6 {
+        page-break-inside: avoid;
+        page-break-after: avoid;
       }
       
       /* Theme-specific styles */
@@ -108,6 +121,9 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
       table.style.width = "100%";
       table.style.tableLayout = "fixed";
 
+      // Add page-break-inside: avoid to prevent tables from breaking across pages
+      table.style.pageBreakInside = "avoid";
+
       // Ensure cells have proper styling
       const cells = table.querySelectorAll("th, td");
       cells.forEach((cell) => {
@@ -123,13 +139,29 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
       });
     });
 
-    // Process lists to add explicit markers (instead of relying on CSS markers)
+    // Process paragraphs to prevent breaking across pages
+    const paragraphs = container.querySelectorAll("p");
+    paragraphs.forEach((paragraph) => {
+      paragraph.style.pageBreakInside = "avoid";
+    });
+
+    // Process headings to prevent breaking across pages
+    const headings = container.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    headings.forEach((heading) => {
+      heading.style.pageBreakInside = "avoid";
+      heading.style.pageBreakAfter = "avoid";
+    });
+
+    // Process lists to add explicit markers and prevent breaking across pages
     const processLists = (listType) => {
       const lists = container.querySelectorAll(listType);
       lists.forEach((list) => {
         // Remove any native list styling
         list.style.listStyleType = "none";
         list.style.paddingLeft = "0";
+
+        // Prevent list from breaking across pages
+        list.style.pageBreakInside = "avoid";
 
         // Process list items
         const items = list.querySelectorAll("li");
@@ -215,20 +247,7 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
       heightLeft -= pageHeight;
     }
 
-    // Add metadata if provided
-    if (props.meta) {
-      const totalPages = pdf.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(8);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text(
-          `Words: ${props.meta.wordCount} | Characters: ${props.meta.charCount}`,
-          10,
-          287
-        );
-      }
-    }
+    // Metadata has been removed as requested
 
     // Return the PDF as a blob
     return pdf.output("blob");
