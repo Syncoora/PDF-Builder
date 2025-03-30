@@ -4,15 +4,6 @@ import { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Download, Info, Save, FileText } from "lucide-react";
-import { ThemeToggle } from "./theme-toggle";
-import { ThemeSelector } from "./theme-selector";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Popover,
@@ -30,6 +21,34 @@ import {
 import { createPDF } from "./pdf-document";
 import type { SavedDocument } from "@/lib/types";
 import type { EditorRef } from "./editor";
+
+// First, add the Dialog import at the top with the other imports
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ChevronDown,
+  Check,
+  Plus,
+  FolderOpen,
+  FileOutput,
+  Eye,
+  Palette,
+  Paintbrush,
+  Sun,
+  Moon,
+} from "lucide-react";
+import { themes, type Theme } from "@/lib/themes";
+import { useTheme } from "@/lib/use-theme";
 
 // Use React.lazy instead of next/dynamic
 const Editor = lazy(() => import("./editor"));
@@ -56,9 +75,13 @@ export default function TextEditorPage() {
   const { toast } = useToast();
   const editorRef = useRef<EditorRef>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const { theme, setTheme } = useTheme();
 
   // Add a new state variable to track preview visibility
-  const [previewVisible, setPreviewVisible] = useState(false);
+  // Change this line:
+  // const [previewVisible, setPreviewVisible] = useState(false)
+  // To:
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 
   // Load saved documents on mount
   useEffect(() => {
@@ -304,8 +327,13 @@ export default function TextEditorPage() {
   }, [pdfTheme]);
 
   // Add a toggle function for the preview
+  // Change this function:
+  // const togglePreview = () => {
+  //   setPreviewVisible(!previewVisible)
+  // }
+  // To:
   const togglePreview = () => {
-    setPreviewVisible(!previewVisible);
+    setPreviewDialogOpen(!previewDialogOpen);
   };
 
   return (
@@ -345,19 +373,153 @@ export default function TextEditorPage() {
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Words: {meta.wordCount} | Characters: {meta.charCount}
-            </span>
-          </div>
-          <Button variant="outline" onClick={handleNewDocument}>
-            New Document
-          </Button>
-          <Button variant="outline" onClick={handleSaveChanges}>
-            <Save className="h-4 w-4 mr-2" />
-            {currentDocument ? "Save Changes" : "Save"}
-          </Button>
+
+        <div className="flex items-center gap-2">
+          {/* Document stats */}
+          <span className="text-sm text-muted-foreground mr-2">
+            Words: {meta.wordCount} | Characters: {meta.charCount}
+          </span>
+
+          {/* Document Management Group */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileText className="h-4 w-4 mr-2" />
+                Document
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleNewDocument}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSaveChanges}>
+                <Save className="h-4 w-4 mr-2" />
+                {currentDocument ? "Save Changes" : "Save"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() =>
+                  document.getElementById("documents-dialog-trigger")?.click()
+                }
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Saved Documents
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Hidden trigger for documents dialog */}
+          <Button
+            id="documents-dialog-trigger"
+            className="hidden"
+            onClick={() =>
+              document.getElementById("documents-dialog-real-trigger")?.click()
+            }
+          />
+
+          {/* Export/Preview Group */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileOutput className="h-4 w-4 mr-2" />
+                Export
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={togglePreview}>
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Palette className="h-4 w-4 mr-2" />
+                  PDF Theme
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setPdfTheme("default")}>
+                    {pdfTheme === "default" && (
+                      <Check className="h-4 w-4 mr-2" />
+                    )}
+                    Default
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPdfTheme("modern")}>
+                    {pdfTheme === "modern" && (
+                      <Check className="h-4 w-4 mr-2" />
+                    )}
+                    Modern
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPdfTheme("minimal")}>
+                    {pdfTheme === "minimal" && (
+                      <Check className="h-4 w-4 mr-2" />
+                    )}
+                    Minimal
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPdfTheme("professional")}>
+                    {pdfTheme === "professional" && (
+                      <Check className="h-4 w-4 mr-2" />
+                    )}
+                    Professional
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem
+                onClick={() => handleDownloadPDF()}
+                disabled={isGeneratingPDF || !content.trim()}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isGeneratingPDF ? "Generating..." : "Download PDF"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Appearance Group */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Paintbrush className="h-4 w-4 mr-2" />
+                Appearance
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Palette className="h-4 w-4 mr-2" />
+                  Theme
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {Object.entries(themes).map(([key, value]) => (
+                    <DropdownMenuItem
+                      key={key}
+                      onClick={() => setTheme(key as Theme)}
+                    >
+                      {theme === key && <Check className="h-4 w-4 mr-2" />}
+                      {value.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem
+                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              >
+                {theme === "light" ? (
+                  <>
+                    <Moon className="h-4 w-4 mr-2" />
+                    Dark Mode
+                  </>
+                ) : (
+                  <>
+                    <Sun className="h-4 w-4 mr-2" />
+                    Light Mode
+                  </>
+                )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <SaveDialog
             onSave={handleSave}
             initialTitle={currentDocument?.title || ""}
@@ -371,50 +533,47 @@ export default function TextEditorPage() {
               </Button>
             }
           />
+
           <DocumentsDialog
             documents={documents}
             onLoad={handleLoad}
             onDelete={handleDelete}
             onDownload={handleDownloadPDF}
             currentDocumentId={currentDocument?.id}
+            trigger={
+              <Button id="documents-dialog-real-trigger" className="hidden" />
+            }
           />
-          <ThemeSelector />
-          <Select value={pdfTheme} onValueChange={setPdfTheme}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="PDF Theme" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
-              <SelectItem value="modern">Modern</SelectItem>
-              <SelectItem value="minimal">Minimal</SelectItem>
-              <SelectItem value="professional">Professional</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={() => handleDownloadPDF()}
-            disabled={isGeneratingPDF || !content.trim()}
-          >
-            <Download className="w-4 w-4 mr-2" />
-            {isGeneratingPDF ? "Generating..." : "Download PDF"}
-          </Button>
-          {/* Update the preview toggle button with an icon */}
-          <Button onClick={togglePreview} variant="outline">
-            <FileText className="h-4 w-4 mr-2" />
-            {previewVisible ? "Hide Preview" : "Show Preview"}
-          </Button>
-          <div className="border-l pl-4">
-            <ThemeToggle />
-          </div>
         </div>
       </div>
       {/* Update the grid layout to be responsive to the preview visibility */}
-      <div
-        className={
-          previewVisible
-            ? "grid lg:grid-cols-2 gap-4"
-            : "grid grid-cols-1 gap-4"
-        }
-      >
+      {/* Change this section:
+      <div className={previewVisible ? "grid lg:grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
+        <Card className="p-4">
+          <Suspense fallback={<div className="min-h-[400px] flex items-center justify-center">Loading editor...</div>}>
+            <Editor
+              ref={editorRef}
+              content={content}
+              onChange={setContent}
+              onUpdateMeta={setMeta}
+              variables={Object.keys(sampleData)}
+            />
+          </Suspense>
+        </Card>
+
+        {previewVisible && (
+          <Card className="p-4 bg-white">
+            <div
+              ref={previewRef}
+              className={`prose max-w-none dark:prose-invert min-h-[400px] pdf-preview theme-${pdfTheme}`}
+            >
+              <div className="table-container" dangerouslySetInnerHTML={{ __html: processedContent }} />
+            </div>
+          </Card>
+        )}
+      </div>
+      // To: */}
+      <div className="grid grid-cols-1 gap-4">
         <Card className="p-4">
           <Suspense
             fallback={
@@ -432,21 +591,22 @@ export default function TextEditorPage() {
             />
           </Suspense>
         </Card>
-
-        {previewVisible && (
-          <Card className="p-4 bg-white">
-            <div
-              ref={previewRef}
-              className={`prose max-w-none dark:prose-invert min-h-[400px] pdf-preview theme-${pdfTheme}`}
-            >
-              <div
-                className="table-container"
-                dangerouslySetInnerHTML={{ __html: processedContent }}
-              />
-            </div>
-          </Card>
-        )}
       </div>
+
+      {/* Add the preview dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <div
+            ref={previewRef}
+            className={`prose max-w-none dark:prose-invert pdf-preview theme-${pdfTheme}`}
+          >
+            <div
+              className="table-container"
+              dangerouslySetInnerHTML={{ __html: processedContent }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -96,20 +96,20 @@ const FontSize = Extension.create({
     ];
   },
 
-  addCommands() {
-    return {
-      setFontSize:
-        (fontSize) =>
-        ({ chain }) => {
-          return chain().setMark("textStyle", { fontSize }).run();
-        },
-      unsetFontSize:
-        () =>
-        ({ chain }) => {
-          return chain().setMark("textStyle", { fontSize: null }).run();
-        },
-    };
-  },
+  // addCommands() {
+  //   return {
+  //     setFontSize:
+  //       (fontSize) =>
+  //       ({ chain }) => {
+  //         return chain().setMark("textStyle", { fontSize }).run();
+  //       },
+  //     unsetFontSize:
+  //       () =>
+  //       ({ chain }) => {
+  //         return chain().setMark("textStyle", { fontSize: null }).run();
+  //       },
+  //   };
+  // },
 });
 
 // Add this CSS at the top of your editor styles
