@@ -1,0 +1,3 @@
+უნდა დავაკომენტარო დაბილდვის დროს
+1. cell.style.border
+2. heading.style.pageBreakInside
