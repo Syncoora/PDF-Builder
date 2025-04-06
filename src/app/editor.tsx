@@ -450,10 +450,12 @@ const Editor = forwardRef<EditorRef, EditorProps>(
     // Add a helper text above the editor
     return (
       <div className="space-y-4">
-        <div className="text-sm text-muted-foreground mb-2">
-          Use ${"{variable}"} syntax to insert dynamic values. Available
-          variables: name, quantity, price
-        </div>
+        {variables.length > 0 && (
+          <div className="text-sm text-muted-foreground mb-2">
+            Use ${"{variable}"} syntax to insert dynamic values. Available
+            variables: {variables.join(", ")}
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 p-2 border rounded-lg bg-muted/50">
           {/* Font Controls */}
           <Select
@@ -669,27 +671,29 @@ const Editor = forwardRef<EditorRef, EditorProps>(
           <ImageUploadDialog onImageSelected={handleImageSelected} />
 
           {/* Add Variables Dropdown */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                Insert Variable
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56">
-              <div className="grid gap-1">
-                {variables.map((variable) => (
-                  <Button
-                    key={variable}
-                    variant="ghost"
-                    className="justify-start font-mono text-sm"
-                    onClick={() => insertVariable(variable)}
-                  >
-                    ${"{" + variable + "}"}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+          {variables.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Insert Variable
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56">
+                <div className="grid gap-1">
+                  {variables.map((variable) => (
+                    <Button
+                      key={variable}
+                      variant="ghost"
+                      className="justify-start font-mono text-sm"
+                      onClick={() => insertVariable(variable)}
+                    >
+                      ${"{" + variable + "}"}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
 
         {!editor ? null : (

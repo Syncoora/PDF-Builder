@@ -54,16 +54,16 @@ import { useTheme } from "@/lib/use-theme";
 const Editor = lazy(() => import("./editor"));
 
 // Example of dynamic data
-const sampleData = {
-  name: "test name",
-  quantity: 3,
-  price: 10,
-  orderId: "ORD-123",
-  date: "2024-02-21",
-  customerEmail: "test@example.com",
-};
+// const sampleData = {
+//   name: "test name",
+//   quantity: 3,
+//   price: 10,
+//   orderId: "ORD-123",
+//   date: "2024-02-21",
+//   customerEmail: "test@example.com",
+// };
 
-export default function TextEditorPage() {
+export default function TextEditorPage({ sampleData }) {
   const [content, setContent] = useState("");
   const [meta, setMeta] = useState({ wordCount: 0, charCount: 0 });
   const [pdfTheme, setPdfTheme] = useState("default");
@@ -347,31 +347,33 @@ export default function TextEditorPage() {
               <span className="font-medium">{currentDocument.title}</span>
             </span>
           )}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Info className="h-4 w-4" />
-                <span className="sr-only">View available variables</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="space-y-4">
-                <h3 className="font-semibold">Available Variables</h3>
-                <div className="space-y-2">
-                  {Object.entries(sampleData).map(([key, value]) => (
-                    <div key={key} className="text-sm grid gap-1">
-                      <code className="px-2 py-1 bg-muted rounded-md">
-                        ${"{" + key + "}"}
-                      </code>
-                      <span className="text-xs text-muted-foreground">
-                        Current value: {String(value)}
-                      </span>
-                    </div>
-                  ))}
+          {Object.keys(sampleData).length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Info className="h-4 w-4" />
+                  <span className="sr-only">View available variables</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Available Variables</h3>
+                  <div className="space-y-2">
+                    {Object.entries(sampleData).map(([key, value]) => (
+                      <div key={key} className="text-sm grid gap-1">
+                        <code className="px-2 py-1 bg-muted rounded-md">
+                          ${"{" + key + "}"}
+                        </code>
+                        <span className="text-xs text-muted-foreground">
+                          Current value: {String(value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
 
         <div className="flex items-center gap-2">

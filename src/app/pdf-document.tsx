@@ -127,8 +127,8 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
       // Ensure cells have proper styling
       const cells = table.querySelectorAll("th, td");
       cells.forEach((cell) => {
-        // cell.style.border = "2px solid #dddddd";
-        // cell.style.padding = "8px";
+        cell.style.border = "2px solid #dddddd";
+        cell.style.padding = "8px";
       });
 
       // Ensure headers have proper styling
@@ -148,8 +148,8 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
     // Process headings to prevent breaking across pages
     const headings = container.querySelectorAll("h1, h2, h3, h4, h5, h6");
     headings.forEach((heading) => {
-      // heading.style.pageBreakInside = "avoid";
-      // heading.style.pageBreakAfter = "avoid";
+      heading.style.pageBreakInside = "avoid";
+      heading.style.pageBreakAfter = "avoid";
     });
 
     // Process lists to add explicit markers and prevent breaking across pages
