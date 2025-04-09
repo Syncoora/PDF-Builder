@@ -6,6 +6,8 @@ import mondaySdk from "monday-sdk-js";
 
 const monday = mondaySdk();
 
+// monday.setToken("2aa1fd95f2878d57ffcb5e8a905640c4");
+
 function App() {
   const [itemId, setItemId] = useState(null);
   const [itemVariables, setItemVariables] = useState({});

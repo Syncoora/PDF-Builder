@@ -21,6 +21,7 @@ import {
 import { createPDF } from "./pdf-document";
 import type { SavedDocument } from "@/lib/types";
 import type { EditorRef } from "./editor";
+import { initMondayClient, getContextData } from "@/lib/monday-sdk";
 
 // First, add the Dialog import at the top with the other imports
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -72,30 +73,77 @@ export default function TextEditorPage({ sampleData }) {
   const [currentDocument, setCurrentDocument] = useState<SavedDocument | null>(
     null
   );
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
   const editorRef = useRef<EditorRef>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
-
-  // Add a new state variable to track preview visibility
-  // Change this line:
-  // const [previewVisible, setPreviewVisible] = useState(false)
-  // To:
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 
-  // Load saved documents on mount
+  // Initialize Monday SDK and get context
   useEffect(() => {
-    setDocuments(getSavedDocuments());
-  }, []);
+    const initialize = async () => {
+      try {
+        await initMondayClient();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Error initializing Monday SDK:", error);
+        toast({
+          title: "Error",
+          description: "Failed to initialize Monday SDK",
+          variant: "destructive",
+        });
+        setIsInitialized(true); // Set to true anyway to allow the app to function
+      }
+    };
 
-  const handleSave = (title: string) => {
+    initialize();
+  }, [toast]);
+
+  // Load saved documents after initialization
+  useEffect(() => {
+    if (isInitialized) {
+      loadDocuments();
+
+      // Display context information for debugging
+      const context = getContextData();
+      console.log("Monday Context:", context);
+
+      if (context.isOnItem && context.boardId) {
+        console.log(`Using storage key: DOCSY_BOARD_${context.boardId}`);
+      } else {
+        console.log("Using storage key: DOCSY_OBJECT");
+      }
+    }
+  }, [isInitialized]);
+
+  // Load saved documents
+  const loadDocuments = async () => {
+    try {
+      setIsLoading(true);
+      const docs = await getSavedDocuments();
+      setDocuments(docs);
+    } catch (error) {
+      console.error("Error loading documents:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load saved documents",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async (title: string) => {
     try {
       // Get the latest content directly from the editor
       const currentContent = editorRef.current?.getContent() || content;
 
       if (currentDocument) {
         // Update existing document
-        const updatedDoc = updateDocument(currentDocument.id, {
+        const updatedDoc = await updateDocument(currentDocument.id, {
           title,
           content: currentContent,
           meta,
@@ -110,7 +158,7 @@ export default function TextEditorPage({ sampleData }) {
         });
       } else {
         // Create new document
-        const savedDoc = saveDocument({
+        const savedDoc = await saveDocument({
           title,
           content: currentContent,
           meta,
@@ -131,9 +179,7 @@ export default function TextEditorPage({ sampleData }) {
     }
   };
 
-  // Update the handleLoad function to ensure content is properly set
   const handleLoad = (doc: SavedDocument) => {
-    // Make sure to set the content state with the document's content
     setContent(doc.content);
     setMeta(doc.meta);
     setCurrentDocument(doc);
@@ -143,9 +189,9 @@ export default function TextEditorPage({ sampleData }) {
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     try {
-      deleteDocument(id);
+      await deleteDocument(id);
       setDocuments(documents.filter((doc) => doc.id !== id));
 
       // If the deleted document is the current one, clear the current document
@@ -166,13 +212,13 @@ export default function TextEditorPage({ sampleData }) {
     }
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (currentDocument) {
       try {
         // Get the latest content directly from the editor
         const currentContent = editorRef.current?.getContent() || content;
 
-        const updatedDoc = updateDocument(currentDocument.id, {
+        const updatedDoc = await updateDocument(currentDocument.id, {
           content: currentContent,
           meta,
         });
@@ -326,15 +372,25 @@ export default function TextEditorPage({ sampleData }) {
     }
   }, [pdfTheme]);
 
-  // Add a toggle function for the preview
-  // Change this function:
-  // const togglePreview = () => {
-  //   setPreviewVisible(!previewVisible)
-  // }
-  // To:
   const togglePreview = () => {
     setPreviewDialogOpen(!previewDialogOpen);
   };
+
+  // Show loading state while initializing
+  if (!isInitialized) {
+    return (
+      <div className="container mx-auto p-4 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">
+            Initializing Monday SDK...
+          </h2>
+          <p className="text-muted-foreground">
+            Please wait while we connect to Monday.com
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-4">
@@ -542,56 +598,37 @@ export default function TextEditorPage({ sampleData }) {
             onDelete={handleDelete}
             onDownload={handleDownloadPDF}
             currentDocumentId={currentDocument?.id}
+            isLoading={isLoading}
             trigger={
               <Button id="documents-dialog-real-trigger" className="hidden" />
             }
           />
         </div>
       </div>
-      {/* Update the grid layout to be responsive to the preview visibility */}
-      {/* Change this section:
-      <div className={previewVisible ? "grid lg:grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
-        <Card className="p-4">
-          <Suspense fallback={<div className="min-h-[400px] flex items-center justify-center">Loading editor...</div>}>
-            <Editor
-              ref={editorRef}
-              content={content}
-              onChange={setContent}
-              onUpdateMeta={setMeta}
-              variables={Object.keys(sampleData)}
-            />
-          </Suspense>
-        </Card>
 
-        {previewVisible && (
-          <Card className="p-4 bg-white">
-            <div
-              ref={previewRef}
-              className={`prose max-w-none dark:prose-invert min-h-[400px] pdf-preview theme-${pdfTheme}`}
-            >
-              <div className="table-container" dangerouslySetInnerHTML={{ __html: processedContent }} />
-            </div>
-          </Card>
-        )}
-      </div>
-      // To: */}
       <div className="grid grid-cols-1 gap-4">
         <Card className="p-4">
-          <Suspense
-            fallback={
-              <div className="min-h-[400px] flex items-center justify-center">
-                Loading editor...
-              </div>
-            }
-          >
-            <Editor
-              ref={editorRef}
-              content={content}
-              onChange={setContent}
-              onUpdateMeta={setMeta}
-              variables={Object.keys(sampleData)}
-            />
-          </Suspense>
+          {isLoading ? (
+            <div className="min-h-[400px] flex items-center justify-center">
+              Loading documents...
+            </div>
+          ) : (
+            <Suspense
+              fallback={
+                <div className="min-h-[400px] flex items-center justify-center">
+                  Loading editor...
+                </div>
+              }
+            >
+              <Editor
+                ref={editorRef}
+                content={content}
+                onChange={setContent}
+                onUpdateMeta={setMeta}
+                variables={Object.keys(sampleData)}
+              />
+            </Suspense>
+          )}
         </Card>
       </div>
 

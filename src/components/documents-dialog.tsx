@@ -30,6 +30,7 @@ interface DocumentsDialogProps {
   onDownload: (doc: SavedDocument) => void;
   currentDocumentId?: string;
   trigger?: React.ReactNode;
+  isLoading?: boolean;
 }
 
 export function DocumentsDialog({
@@ -39,12 +40,23 @@ export function DocumentsDialog({
   onDownload,
   currentDocumentId,
   trigger,
+  isLoading = false,
 }: DocumentsDialogProps) {
   const [open, setOpen] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
 
   const handleLoad = (doc: SavedDocument) => {
     onLoad(doc);
     setOpen(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeleteInProgress(id);
+      await onDelete(id);
+    } finally {
+      setDeleteInProgress(null);
+    }
   };
 
   return (
@@ -62,7 +74,9 @@ export function DocumentsDialog({
           <DialogTitle>Saved Documents</DialogTitle>
         </DialogHeader>
         <div className="mt-4">
-          {documents.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-8">Loading documents...</div>
+          ) : documents.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
               No saved documents
             </p>
@@ -123,7 +137,8 @@ export function DocumentsDialog({
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => onDelete(doc.id)}
+                          onClick={() => handleDelete(doc.id)}
+                          disabled={deleteInProgress === doc.id}
                         >
                           <Trash2Icon className="h-4 w-4" />
                         </Button>
