@@ -3,13 +3,8 @@
 import { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Info, Save, FileText } from "lucide-react";
+import { Download, Save, FileText, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { SaveDialog } from "@/components/save-dialog";
 import { DocumentsDialog } from "@/components/documents-dialog";
 import {
@@ -41,8 +36,6 @@ import {
   Check,
   Plus,
   FolderOpen,
-  FileOutput,
-  Eye,
   Palette,
   Paintbrush,
   Sun,
@@ -396,39 +389,12 @@ export default function TextEditorPage({ sampleData }) {
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Text Editor</h1>
+          <h1 className="text-2xl font-bold">Docsy</h1>
           {currentDocument && (
             <span className="text-sm text-muted-foreground">
               Editing:{" "}
               <span className="font-medium">{currentDocument.title}</span>
             </span>
-          )}
-          {Object.keys(sampleData).length > 0 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Info className="h-4 w-4" />
-                  <span className="sr-only">View available variables</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Available Variables</h3>
-                  <div className="space-y-2">
-                    {Object.entries(sampleData).map(([key, value]) => (
-                      <div key={key} className="text-sm grid gap-1">
-                        <code className="px-2 py-1 bg-muted rounded-md">
-                          ${"{" + key + "}"}
-                        </code>
-                        <span className="text-xs text-muted-foreground">
-                          Current value: {String(value)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
           )}
         </div>
 
@@ -437,6 +403,18 @@ export default function TextEditorPage({ sampleData }) {
           <span className="text-sm text-muted-foreground mr-2">
             Words: {meta.wordCount} | Characters: {meta.charCount}
           </span>
+
+          {/* Save Button - Now as a standalone button */}
+          <Button variant="outline" onClick={handleSaveChanges}>
+            <Save className="h-4 w-4 mr-2" />
+            {currentDocument ? "Save" : "Save As"}
+          </Button>
+
+          {/* Preview Button - Now as a standalone button */}
+          <Button variant="outline" onClick={togglePreview}>
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
+          </Button>
 
           {/* Document Management Group */}
           <DropdownMenu>
@@ -451,10 +429,6 @@ export default function TextEditorPage({ sampleData }) {
               <DropdownMenuItem onClick={handleNewDocument}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Document
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSaveChanges}>
-                <Save className="h-4 w-4 mr-2" />
-                {currentDocument ? "Save Changes" : "Save"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -477,61 +451,15 @@ export default function TextEditorPage({ sampleData }) {
             }
           />
 
-          {/* Export/Preview Group */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <FileOutput className="h-4 w-4 mr-2" />
-                Export
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={togglePreview}>
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Palette className="h-4 w-4 mr-2" />
-                  PDF Theme
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => setPdfTheme("default")}>
-                    {pdfTheme === "default" && (
-                      <Check className="h-4 w-4 mr-2" />
-                    )}
-                    Default
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setPdfTheme("modern")}>
-                    {pdfTheme === "modern" && (
-                      <Check className="h-4 w-4 mr-2" />
-                    )}
-                    Modern
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setPdfTheme("minimal")}>
-                    {pdfTheme === "minimal" && (
-                      <Check className="h-4 w-4 mr-2" />
-                    )}
-                    Minimal
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setPdfTheme("professional")}>
-                    {pdfTheme === "professional" && (
-                      <Check className="h-4 w-4 mr-2" />
-                    )}
-                    Professional
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuItem
-                onClick={() => handleDownloadPDF()}
-                disabled={isGeneratingPDF || !content.trim()}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isGeneratingPDF ? "Generating..." : "Download PDF"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Export Group - Now just for PDF download */}
+          <Button
+            variant="outline"
+            onClick={() => handleDownloadPDF()}
+            disabled={isGeneratingPDF || !content.trim()}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isGeneratingPDF ? "Generating..." : "Download PDF"}
+          </Button>
 
           {/* Appearance Group */}
           <DropdownMenu>
@@ -626,6 +554,7 @@ export default function TextEditorPage({ sampleData }) {
                 onChange={setContent}
                 onUpdateMeta={setMeta}
                 variables={Object.keys(sampleData)}
+                sampleData={sampleData}
               />
             </Suspense>
           )}

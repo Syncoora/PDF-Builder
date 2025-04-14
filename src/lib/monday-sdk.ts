@@ -13,7 +13,7 @@ const contextData: {
 
 // Initialize the SDK and get context
 export const initMondayClient = async () => {
-  // monday.setToken(process.env.NEXT_PUBLIC_MONDAY_TOKEN || "");
+  monday.setToken("2aa1fd95f2878d57ffcb5e8a905640c4");
 
   try {
     // Get the context from Monday

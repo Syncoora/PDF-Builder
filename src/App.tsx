@@ -53,15 +53,23 @@ function App() {
               console.log(columnValue);
 
               if (["text", "numbers"].includes(columnValue.type)) {
-                variables[columnValue.column.title] = columnValue.value;
+                const val = JSON.parse(columnValue.value);
+
+                let columnTitle = columnValue.column.title;
+                columnTitle = columnTitle.replaceAll(" ", "_");
+
+                variables[columnTitle] = val;
               } else if (columnValue.type === "date") {
-                variables[columnValue.column.title] = "";
+                let columnTitle = columnValue.column.title;
+                columnTitle = columnTitle.replaceAll(" ", "_");
+
+                variables[columnTitle] = "";
 
                 if (columnValue.value) {
                   const dateJson = JSON.parse(columnValue.value);
 
                   if (dateJson.date) {
-                    variables[columnValue.column.title] = dateJson.date;
+                    variables[columnTitle] = dateJson.date;
                   }
                 }
               }

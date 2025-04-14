@@ -34,3 +34,9 @@ export const metadata = {
 import "./globals.css";
 
 import "./globals.css";
+
+import "./globals.css";
+
+import "./globals.css";
+
+import "./globals.css";

@@ -28,13 +28,54 @@ object {
   display: inline;
 }
 
-/* * {
-  page-break-inside: auto;
-  page-break-inside: avoid;
+.pdf-preview {
+  /* ... other existing styles ... */
+  line-height: 1.3; /* Ensure consistent line height */
+}
 
-  page-break-inside: inherit;
-  page-break-inside: initial;
-  page-break-inside: revert;
-  page-break-inside: revert-layer;
-  page-break-inside: unset;
-} */
+/* Add or ensure these specific rules exist for PDF preview */
+.pdf-preview p,
+.pdf-preview h1,
+.pdf-preview h2,
+.pdf-preview h3,
+.pdf-preview h4,
+.pdf-preview h5,
+.pdf-preview h6,
+.pdf-preview ul,
+.pdf-preview ol,
+.pdf-preview li,
+.pdf-preview table,
+.pdf-preview thead, /* Try avoiding breaks in table headers */
+.pdf-preview tbody, /* Try avoiding breaks in table bodies */
+.pdf-preview tr,    /* <<-- Add this rule specifically for rows */
+.pdf-preview div   /* Add for generic divs if needed */ {
+  page-break-inside: avoid !important; /* Add !important as a test if rules aren't applying */
+}
+
+/* Optional: Try preventing breaks *before* tables if they often get cut */
+.pdf-preview table {
+  page-break-before: auto; /* Default, but ensures no forced break before */
+  page-break-inside: avoid !important; /* Already present, maybe add !important */
+  /* ... other table styles ... */
+}
+
+/* Optional: Ensure list items themselves avoid breaking */
+.pdf-preview li {
+  page-break-inside: avoid !important;
+  /* ... other list item styles ... */
+}
+
+.saved-docs-table {
+  border: none !important;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.saved-docs-th,
+.saved-docs-td {
+  border: none !important;
+  padding: 8px;
+  text-align: left;
+  word-break: break-word;
+}

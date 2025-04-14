@@ -44,6 +44,8 @@ import {
   Trash2,
   Type,
   Upload,
+  Check,
+  Braces,
 } from "lucide-react";
 import {
   Dialog,
@@ -54,11 +56,13 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import CharacterCount from "@tiptap/extension-character-count";
 import FontFamily from "@tiptap/extension-font-family";
 import UnderlineExtension from "@tiptap/extension-underline";
 import { Extension } from "@tiptap/core";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Create a custom font size extension
 const FontSize = Extension.create({
@@ -240,12 +244,80 @@ function ImageUploadDialog({ onImageSelected }: ImageUploadDialogProps) {
   );
 }
 
-// Update the EditorProps interface
+// Color picker component
+function ColorPicker({
+  onChange,
+  defaultColor = "#000000",
+  onApply,
+}: {
+  onChange: (color: string) => void;
+  defaultColor?: string;
+  onApply?: (color: string) => void;
+}) {
+  const [color, setColor] = useState(defaultColor);
+
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setColor(newColor);
+    onChange(newColor);
+  };
+
+  const handleApply = () => {
+    if (onApply) {
+      onApply(color);
+    }
+  };
+
+  // Use mousedown instead of click to prevent the popover from closing
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <div
+          className="w-8 h-8 rounded-md border border-muted"
+          style={{ backgroundColor: color }}
+          onMouseDown={handleMouseDown}
+        />
+        <Input
+          type="text"
+          value={color}
+          onChange={(e) => {
+            setColor(e.target.value);
+            if (/^#([0-9A-F]{3}){1,2}$/i.test(e.target.value)) {
+              onChange(e.target.value);
+            }
+          }}
+          className="w-24 font-mono text-xs"
+          onMouseDown={handleMouseDown}
+        />
+      </div>
+      <input
+        type="color"
+        value={color}
+        onChange={handleColorChange}
+        className="w-full h-8 cursor-pointer"
+        onMouseDown={handleMouseDown}
+      />
+      {onApply && (
+        <Button size="sm" onClick={handleApply} className="mt-2">
+          <Check className="h-4 w-4 mr-2" />
+          Apply Color
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// Update the EditorProps interface to include sampleData
 interface EditorProps {
   content: string;
   onChange: (content: string) => void;
   onUpdateMeta: (meta: any) => void;
   variables: string[];
+  sampleData: Record<string, any>;
 }
 
 // Add a ref type for the editor
@@ -255,7 +327,7 @@ export interface EditorRef {
 
 // Update the Editor component to expose a method to get current content
 const Editor = forwardRef<EditorRef, EditorProps>(
-  ({ content, onChange, onUpdateMeta, variables }, ref) => {
+  ({ content, onChange, onUpdateMeta, variables, sampleData }, ref) => {
     const [fontFamilies, setFontFamilies] = useState([
       { value: "Arial", label: "Arial" },
       { value: "Times New Roman", label: "Times New Roman" },
@@ -299,6 +371,16 @@ const Editor = forwardRef<EditorRef, EditorProps>(
       { label: "Teal", value: "#008080" },
       { label: "Aqua", value: "#00FFFF" },
     ]);
+
+    // State for color picker
+    const [colorPickerOpen, setColorPickerOpen] = useState(false);
+    const [currentColor, setCurrentColor] = useState("#000000");
+
+    // Add these state variables for the table settings
+    // Add this after the colorPickerOpen and currentColor state variables
+    const [tableRows, setTableRows] = useState(3);
+    const [tableCols, setTableCols] = useState(3);
+    const [tableWithHeaderRow, setTableWithHeaderRow] = useState(true);
 
     // Create a new editor instance when content changes
     const editor = useEditor({
@@ -349,14 +431,6 @@ const Editor = forwardRef<EditorRef, EditorProps>(
         if (previewElement) {
           // Process variables in content
           const processedContent = html.replace(/\${(\w+)}/g, (match, key) => {
-            const sampleData = {
-              name: "test name",
-              quantity: 3,
-              price: 10,
-              orderId: "ORD-123",
-              date: "2024-02-21",
-              customerEmail: "test@example.com",
-            };
             const value = sampleData[key];
             return value != null ? String(value) : match;
           });
@@ -391,6 +465,16 @@ const Editor = forwardRef<EditorRef, EditorProps>(
       };
     }, []);
 
+    // Update current color when editor selection changes
+    useEffect(() => {
+      if (editor) {
+        const color = editor.getAttributes("textStyle").color;
+        if (color) {
+          setCurrentColor(color);
+        }
+      }
+    }, [editor]);
+
     // Add null check at the beginning
     if (!editor) {
       return null;
@@ -402,12 +486,12 @@ const Editor = forwardRef<EditorRef, EditorProps>(
       editor?.chain().focus().setMark("textStyle", { fontSize: size }).run();
     };
 
-    const insertTable = () => {
-      editor
-        ?.chain()
-        .focus()
-        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-        .run();
+    const insertTable = (
+      rows: number,
+      cols: number,
+      withHeaderRow: boolean
+    ) => {
+      editor?.chain().focus().insertTable({ rows, cols, withHeaderRow }).run();
     };
 
     const addColumnBefore = () => {
@@ -447,11 +531,53 @@ const Editor = forwardRef<EditorRef, EditorProps>(
       editor?.chain().focus().insertContent(`\${${variable}}`).run();
     };
 
+    // Function to apply color and close popover
+    const applyColor = (color: string) => {
+      editor?.chain().focus().setColor(color).run();
+      setColorPickerOpen(false);
+    };
+
+    // Function to handle preset color selection
+    const handlePresetColorSelect = (color: string) => {
+      editor?.chain().focus().setColor(color).run();
+      setColorPickerOpen(false);
+    };
+
     // Add a helper text above the editor
+
     return (
       <div className="space-y-4">
         {variables.length > 0 && (
-          <div className="text-sm text-muted-foreground mb-2">
+          <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 w-6 rounded-full"
+                >
+                  <Braces className="h-3 w-3" />
+                  <span className="sr-only">View available variables</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Available Variables</h3>
+                  <div className="space-y-2">
+                    {variables.map((variable) => (
+                      <div key={variable} className="text-sm grid gap-1">
+                        <code className="px-2 py-1 bg-muted rounded-md">
+                          ${"{" + variable + "}"}
+                        </code>
+                        <span className="text-xs text-muted-foreground">
+                          Current value: {String(sampleData[variable] || "")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             Use ${"{variable}"} syntax to insert dynamic values. Available
             variables: {variables.join(", ")}
           </div>
@@ -488,8 +614,8 @@ const Editor = forwardRef<EditorRef, EditorProps>(
             </SelectContent>
           </Select>
 
-          {/* Update the Text Color control */}
-          <Popover>
+          {/* Update the Text Color control with color picker */}
+          <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="icon" className="relative">
                 <Type className="h-4 w-4" />
@@ -502,26 +628,52 @@ const Editor = forwardRef<EditorRef, EditorProps>(
                 />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64">
-              <div className="grid grid-cols-5 gap-2">
-                {colorPresets.map((color) => (
-                  <button
-                    key={color.value}
-                    className="relative h-8 w-8 rounded-md border border-muted hover:scale-105 transition"
-                    style={{ backgroundColor: color.value }}
-                    title={color.label}
-                    onClick={() => {
-                      editor?.chain().focus().setColor(color.value).run();
-                    }}
-                  >
-                    {editor?.isActive("textStyle", { color: color.value }) && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="h-2 w-2 rounded-full bg-white shadow-sm" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
+            <PopoverContent
+              className="w-64"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <Tabs defaultValue="presets">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="presets">Presets</TabsTrigger>
+                  <TabsTrigger value="picker">Custom</TabsTrigger>
+                </TabsList>
+                <TabsContent value="presets" className="mt-2">
+                  <div className="grid grid-cols-5 gap-2">
+                    {colorPresets.map((color) => (
+                      <button
+                        key={color.value}
+                        className="relative h-8 w-8 rounded-md border border-muted hover:scale-105 transition"
+                        style={{ backgroundColor: color.value }}
+                        title={color.label}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Prevent popover from closing
+                          handlePresetColorSelect(color.value);
+                        }}
+                      >
+                        {editor?.isActive("textStyle", {
+                          color: color.value,
+                        }) && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="h-2 w-2 rounded-full bg-white shadow-sm" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </TabsContent>
+                <TabsContent value="picker" className="mt-2">
+                  <div className="space-y-2">
+                    <Label>Custom Color</Label>
+                    <ColorPicker
+                      defaultColor={
+                        editor?.getAttributes("textStyle").color || "#000000"
+                      }
+                      onChange={setCurrentColor}
+                      onApply={applyColor}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </PopoverContent>
           </Popover>
 
@@ -603,67 +755,141 @@ const Editor = forwardRef<EditorRef, EditorProps>(
             <AlignRight className="h-4 w-4" />
           </Toggle>
 
-          {/* Update the Table Controls section */}
+          {/* Table Insert Dialog */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="icon">
                 <TableIcon className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 grid gap-2">
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={insertTable} variant="outline" size="sm">
-                  Insert Table
-                </Button>
-                <Button onClick={deleteTable} variant="outline" size="sm">
-                  <Trash2 className="h-4 w-4 mr-1" /> Table
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={addColumnBefore} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Col Before
-                </Button>
-                <Button onClick={addColumnAfter} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Col After
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={addRowBefore} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Row Before
-                </Button>
-                <Button onClick={addRowAfter} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Row After
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={deleteColumn} variant="outline" size="sm">
-                  <Minus className="h-4 w-4 mr-1" /> Column
-                </Button>
-                <Button onClick={deleteRow} variant="outline" size="sm">
-                  <Minus className="h-4 w-4 mr-1" /> Row
-                </Button>
-              </div>
-              <Select
-                onValueChange={(value) => {
-                  const style = document.createElement("style");
-                  style.textContent = `
-                  .ProseMirror table td,
-                  .ProseMirror table th {
-                    border-width: ${value};
-                  }
-                `;
-                  document.head.appendChild(style);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Border width" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1px">Thin</SelectItem>
-                  <SelectItem value="2px">Medium</SelectItem>
-                  <SelectItem value="3px">Thick</SelectItem>
-                </SelectContent>
-              </Select>
+            <PopoverContent className="w-72">
+              {!editor.isActive("table") ? (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Insert Table</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col space-y-1.5">
+                      <Label htmlFor="rows">Rows</Label>
+                      <Input
+                        id="rows"
+                        type="number"
+                        value={tableRows}
+                        onChange={(e) =>
+                          setTableRows(
+                            Math.max(1, Number.parseInt(e.target.value) || 1)
+                          )
+                        }
+                        min="1"
+                      />
+                    </div>
+                    <div className="flex flex-col space-y-1.5">
+                      <Label htmlFor="columns">Columns</Label>
+                      <Input
+                        id="columns"
+                        type="number"
+                        value={tableCols}
+                        onChange={(e) =>
+                          setTableCols(
+                            Math.max(1, Number.parseInt(e.target.value) || 1)
+                          )
+                        }
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="header-row"
+                      checked={tableWithHeaderRow}
+                      onCheckedChange={(checked) =>
+                        setTableWithHeaderRow(checked as boolean)
+                      }
+                    />
+                    <Label htmlFor="header-row">Include header row</Label>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      insertTable(tableRows, tableCols, tableWithHeaderRow);
+                    }}
+                    className="w-full"
+                  >
+                    Insert Table
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Table Options</h4>
+                  <div className="grid gap-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={addColumnBefore}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Col Before
+                      </Button>
+                      <Button
+                        onClick={addColumnAfter}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Col After
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={addRowBefore}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Row Before
+                      </Button>
+                      <Button onClick={addRowAfter} variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-1" /> Row After
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={deleteColumn}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Minus className="h-4 w-4 mr-1" /> Column
+                      </Button>
+                      <Button onClick={deleteRow} variant="outline" size="sm">
+                        <Minus className="h-4 w-4 mr-1" /> Row
+                      </Button>
+                    </div>
+                    <Select
+                      onValueChange={(value) => {
+                        const style = document.createElement("style");
+                        style.textContent = `
+                        .ProseMirror table td,
+                        .ProseMirror table th {
+                          border-width: ${value};
+                        }
+                      `;
+                        document.head.appendChild(style);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Border width" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1px">Thin</SelectItem>
+                        <SelectItem value="2px">Medium</SelectItem>
+                        <SelectItem value="3px">Thick</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={deleteTable}
+                      variant="outline"
+                      className="mt-2"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Delete Table
+                    </Button>
+                  </div>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
 

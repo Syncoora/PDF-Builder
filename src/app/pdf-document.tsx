@@ -1,4 +1,3 @@
-"use client";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -19,12 +18,10 @@ interface PDFDocumentProps {
 // Update the createPDF function to prevent content breaking across pages
 export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
   try {
-    // Create a temporary container to render the HTML content
     const container = document.createElement("div");
-    container.className = `pdf-preview theme-${props.theme || "default"}`;
     container.style.position = "absolute";
     container.style.left = "-9999px";
-    container.style.width = "794px"; // A4 width in pixels at 96 DPI
+    container.style.width = "794px";
     container.style.padding = "40px";
     container.style.backgroundColor = "white";
     container.style.color = "black";
@@ -32,228 +29,158 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
     container.style.fontSize = "12px";
     container.style.lineHeight = "1.5";
 
-    // Process variables in content
-    const processedContent = props.content.replace(
-      /\${(\w+)}/g,
-      (match, key) => {
-        const value = props.templateData?.[key];
-        return value != null ? String(value) : match;
-      }
-    );
-
-    // Set the HTML content
-    container.innerHTML = processedContent;
-
-    // Add specific styles for tables and lists to ensure they render properly
     const style = document.createElement("style");
     style.textContent = `
-      /* Table styles */
       table {
         width: 100%;
         border-collapse: collapse;
-        margin: 0.5em 0;
-        page-break-inside: avoid; /* Prevent tables from breaking across pages */
+        table-layout: fixed;
       }
-      
-      table th,
-      table td {
-        border: 2px solid #dddddd;
+      table, th, td {
+        border: 1px solid black;
+      }
+      th, td {
         padding: 8px;
         text-align: left;
-      }
-      
-      table th {
-        background-color: #f1f3f5;
-        font-weight: bold;
-      }
-      
-      table tr:nth-child(even) {
-        background-color: #f9f9f9;
-      }
-      
-      /* List styles - use custom markers instead of native ones */
-      ul, ol {
-        padding-left: 0;
-        margin: 0.5em 0;
-        list-style-type: none;
-        page-break-inside: avoid; /* Prevent lists from breaking across pages */
-      }
-      
-      li {
-        position: relative;
-        padding-left: 1.5em;
-        margin-bottom: 0.2em;
-      }
-      
-      /* Prevent paragraphs from breaking across pages */
-      p {
-        page-break-inside: avoid;
-      }
-      
-      /* Prevent headings from breaking across pages and ensure they're not at the bottom of a page */
-      h1, h2, h3, h4, h5, h6 {
-        page-break-inside: avoid;
-        page-break-after: avoid;
-      }
-      
-      /* Theme-specific styles */
-      .theme-modern table th {
-        background-color: #e9ecef;
-      }
-      
-      .theme-minimal table th {
-        background-color: #f8f9fa;
-      }
-      
-      .theme-professional table th {
-        background-color: #e6f0ff;
+        word-break: break-word;
       }
     `;
+
+    console.log(style);
+
     container.appendChild(style);
 
-    // Add the container to the document body
+    const processedContent = props.content.replace(/\${(\w+)}/g, (_, key) => {
+      return props.templateData?.[key]?.toString() || "";
+    });
+
+    container.innerHTML += processedContent;
+
+    console.log(container);
+
+    // Important: Add to document immediately to ensure DOM elements exist for html2canvas
     document.body.appendChild(container);
 
-    // Process any tables to ensure they're properly formatted
-    const tables = container.querySelectorAll("table");
-    tables.forEach((table) => {
-      // Ensure table has proper width
-      table.style.width = "100%";
-      table.style.tableLayout = "fixed";
+    // Allow brief time for browser to process DOM changes
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // Add page-break-inside: avoid to prevent tables from breaking across pages
-      table.style.pageBreakInside = "avoid";
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const pageWidth = pdf.internal.pageSize.getWidth();
 
-      // Ensure cells have proper styling
-      const cells = table.querySelectorAll("th, td");
-      cells.forEach((cell) => {
-        cell.style.border = "2px solid #dddddd";
-        cell.style.padding = "8px";
-      });
+    let currentPage = 1;
+    let offsetY = 10;
 
-      // Ensure headers have proper styling
-      const headers = table.querySelectorAll("th");
-      headers.forEach((header) => {
-        header.style.backgroundColor = "#f1f3f5";
-        header.style.fontWeight = "bold";
-      });
-    });
-
-    // Process paragraphs to prevent breaking across pages
-    const paragraphs = container.querySelectorAll("p");
-    paragraphs.forEach((paragraph) => {
-      paragraph.style.pageBreakInside = "avoid";
-    });
-
-    // Process headings to prevent breaking across pages
-    const headings = container.querySelectorAll("h1, h2, h3, h4, h5, h6");
-    headings.forEach((heading) => {
-      heading.style.pageBreakInside = "avoid";
-      heading.style.pageBreakAfter = "avoid";
-    });
-
-    // Process lists to add explicit markers and prevent breaking across pages
-    const processLists = (listType) => {
-      const lists = container.querySelectorAll(listType);
-      lists.forEach((list) => {
-        // Remove any native list styling
-        list.style.listStyleType = "none";
-        list.style.paddingLeft = "0";
-
-        // Prevent list from breaking across pages
-        list.style.pageBreakInside = "avoid";
-
-        // Process list items
-        const items = list.querySelectorAll("li");
-        items.forEach((item, index) => {
-          // Remove any existing markers
-          const existingMarkers = item.querySelectorAll(".list-marker");
-          existingMarkers.forEach((marker) => marker.remove());
-
-          // Create a new marker
-          const markerSpan = document.createElement("span");
-          markerSpan.className = "list-marker";
-          markerSpan.style.position = "absolute";
-          markerSpan.style.left = "0";
-          markerSpan.style.display = "inline-block";
-          markerSpan.style.width = "1.5em";
-          markerSpan.style.textAlign = "center";
-
-          // Set the marker content based on list type
-          if (listType === "ul") {
-            markerSpan.textContent = "•";
-          } else if (listType === "ol") {
-            markerSpan.textContent = `${index + 1}.`;
-          }
-
-          // Add the marker to the list item
-          item.style.position = "relative";
-          item.style.paddingLeft = "1.5em";
-
-          // Insert at the beginning of the list item
-          if (item.firstChild) {
-            item.insertBefore(markerSpan, item.firstChild);
-          } else {
-            item.appendChild(markerSpan);
-          }
-        });
-      });
+    // Configure html2canvas to avoid iframe issues
+    const canvasOptions = {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      allowTaint: true,
+      ignoreElements: (element: Element) => element.tagName === "IFRAME",
     };
 
-    // Process both unordered and ordered lists
-    processLists("ul");
-    processLists("ol");
+    const elements = Array.from(container.children) as HTMLElement[];
 
-    // Use html2canvas to capture the content
-    const canvas = await html2canvas(container, {
-      scale: 2, // Higher scale for better quality
-      useCORS: true,
-      logging: false,
-      backgroundColor: "white",
-      allowTaint: true,
-    });
+    for (const element of elements) {
+      console.log(element);
 
-    // Remove the temporary container
-    document.body.removeChild(container);
+      if (element.tagName === "TABLE") {
+        const tableClone = element.cloneNode(true) as HTMLElement;
+        container.appendChild(tableClone);
 
-    // Create a new PDF document
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
+        const rows = Array.from(tableClone.querySelectorAll("tr"));
+        const header = tableClone.querySelector("thead")?.outerHTML || "";
+        let chunkTable = document.createElement("table");
+        chunkTable.innerHTML = header;
+        container.appendChild(chunkTable);
 
-    // Calculate the PDF dimensions
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 297; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        for (const row of rows) {
+          chunkTable.appendChild(row.cloneNode(true));
 
-    // Add the canvas image to the PDF
-    const imgData = canvas.toDataURL("image/png");
+          // Apply the canvas options to avoid iframe issues
+          const canvas = await html2canvas(chunkTable, canvasOptions);
+          const imgHeight = (canvas.height * (pageWidth - 20)) / canvas.width;
 
-    // Handle pagination for longer content
-    let heightLeft = imgHeight;
-    let position = 0;
+          if (offsetY + imgHeight > pageHeight - 20) {
+            chunkTable.removeChild(chunkTable.lastChild!);
 
-    // Add first page
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+            // Apply the canvas options to avoid iframe issues
+            const finalCanvas = await html2canvas(chunkTable, canvasOptions);
+            const finalImgHeight =
+              (finalCanvas.height * (pageWidth - 20)) / finalCanvas.width;
 
-    // Add additional pages if needed
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+            pdf.addImage(
+              finalCanvas,
+              "PNG",
+              10,
+              offsetY,
+              pageWidth - 20,
+              finalImgHeight
+            );
+            pdf.setFontSize(10);
+            pdf.text(`${currentPage}`, pageWidth / 2, pageHeight - 10, {
+              align: "center",
+            });
+            pdf.addPage();
+            currentPage++;
+            offsetY = 10;
+
+            chunkTable = document.createElement("table");
+            chunkTable.innerHTML = header;
+            chunkTable.appendChild(row.cloneNode(true));
+            container.appendChild(chunkTable);
+          }
+        }
+
+        // Apply the canvas options to avoid iframe issues
+        const finalCanvas = await html2canvas(chunkTable, canvasOptions);
+        const finalImgHeight =
+          (finalCanvas.height * (pageWidth - 20)) / finalCanvas.width;
+
+        pdf.addImage(
+          finalCanvas,
+          "PNG",
+          10,
+          offsetY,
+          pageWidth - 20,
+          finalImgHeight
+        );
+        offsetY += finalImgHeight;
+
+        container.removeChild(tableClone);
+        container.removeChild(chunkTable);
+      } else if (element.offsetHeight > 0 && element.offsetWidth > 0) {
+        // Apply the canvas options to avoid iframe issues
+        const canvas = await html2canvas(element, canvasOptions);
+        const imgHeight = (canvas.height * (pageWidth - 20)) / canvas.width;
+
+        if (offsetY + imgHeight > pageHeight - 20) {
+          pdf.setFontSize(10);
+          pdf.text(`${currentPage}`, pageWidth / 2, pageHeight - 10, {
+            align: "center",
+          });
+          pdf.addPage();
+          currentPage++;
+          offsetY = 10;
+        }
+
+        pdf.addImage(canvas, "PNG", 10, offsetY, pageWidth - 20, imgHeight);
+        offsetY += imgHeight;
+      }
     }
 
-    // Metadata has been removed as requested
+    pdf.setFontSize(10);
+    pdf.text(`${currentPage}`, pageWidth / 2, pageHeight - 10, {
+      align: "center",
+    });
 
-    // Return the PDF as a blob
+    document.body.removeChild(container);
+
     return pdf.output("blob");
   } catch (error) {
     console.error("PDF generation error:", error);
-    throw new Error("Failed to generate PDF");
+    throw new Error("Failed to generate PDF: " + error.message);
   }
 }
 
