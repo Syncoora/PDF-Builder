@@ -23,7 +23,11 @@ import { createPDF } from "./pdf-document";
 import { downloadWordDoc } from "./word-document";
 import type { SavedDocument } from "@/lib/types";
 import type { EditorRef } from "./editor";
-import { initMondayClient, getContextData } from "@/lib/monday-sdk";
+import {
+  initMondayClient,
+  getContextData,
+  getMondayClient,
+} from "@/lib/monday-sdk";
 
 // First, add the Dialog import at the top with the other imports
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -34,21 +38,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  ChevronDown,
-  Check,
-  Plus,
-  FolderOpen,
-  Palette,
-  Paintbrush,
-  Sun,
-  Moon,
-} from "lucide-react";
-import { themes, type Theme } from "@/lib/themes";
+import { ChevronDown, Plus, FolderOpen, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/use-theme";
 
 // Use React.lazy instead of next/dynamic
@@ -87,6 +78,34 @@ export default function TextEditorPage({ sampleData }) {
     const initialize = async () => {
       try {
         await initMondayClient();
+
+        // Set up listener for Monday.com theme
+        const monday = getMondayClient();
+        monday.listen("context", (res: any) => {
+          if (res?.data?.theme) {
+            const defaultMode = ["dark", "black"].includes(res.data.theme)
+              ? "dark"
+              : "light";
+            setTheme(defaultMode);
+            console.log(
+              `Setting theme to ${defaultMode} based on Monday.com theme: ${res.data.theme}`
+            );
+          }
+        });
+
+        // Get initial context to set theme immediately
+        monday.get("context").then((res: any) => {
+          if (res?.data?.theme) {
+            const defaultMode = ["dark", "black"].includes(res.data.theme)
+              ? "dark"
+              : "light";
+            setTheme(defaultMode);
+            console.log(
+              `Initial theme set to ${defaultMode} based on Monday.com theme: ${res.data.theme}`
+            );
+          }
+        });
+
         setIsInitialized(true);
       } catch (error) {
         console.error("Error initializing Monday SDK:", error);
@@ -100,7 +119,7 @@ export default function TextEditorPage({ sampleData }) {
     };
 
     initialize();
-  }, [toast]);
+  }, [toast, setTheme]);
 
   // Load saved documents after initialization
   useEffect(() => {
@@ -544,50 +563,23 @@ export default function TextEditorPage({ sampleData }) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Appearance Group */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Paintbrush className="h-4 w-4 mr-2" />
-                Appearance
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Palette className="h-4 w-4 mr-2" />
-                  Theme
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  {Object.entries(themes).map(([key, value]) => (
-                    <DropdownMenuItem
-                      key={key}
-                      onClick={() => setTheme(key as Theme)}
-                    >
-                      {theme === key && <Check className="h-4 w-4 mr-2" />}
-                      {value.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuItem
-                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              >
-                {theme === "light" ? (
-                  <>
-                    <Moon className="h-4 w-4 mr-2" />
-                    Dark Mode
-                  </>
-                ) : (
-                  <>
-                    <Sun className="h-4 w-4 mr-2" />
-                    Light Mode
-                  </>
-                )}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Dark/Light Mode Toggle */}
+          <Button
+            variant="outline"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          >
+            {theme === "light" ? (
+              <>
+                <Moon className="h-4 w-4 mr-2" />
+                Dark Mode
+              </>
+            ) : (
+              <>
+                <Sun className="h-4 w-4 mr-2" />
+                Light Mode
+              </>
+            )}
+          </Button>
 
           <SaveDialog
             onSave={handleSave}
