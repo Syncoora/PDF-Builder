@@ -1,3 +1,4 @@
+"use client";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -15,7 +16,7 @@ interface PDFDocumentProps {
   templateData?: TemplateData;
 }
 
-// Update the createPDF function to prevent content breaking across pages
+// Update the createPDF function to preserve empty lines
 export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
   try {
     const container = document.createElement("div");
@@ -44,25 +45,44 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
         text-align: left;
         word-break: break-word;
       }
+      /* Ensure empty paragraphs have height */
+      p:empty {
+        min-height: 1em;
+        line-height: 1.5;
+        margin: 0.5em 0;
+      }
+      /* Preserve whitespace */
+      p {
+        white-space: pre-wrap;
+      }
+      /* Ensure line breaks are visible */
+      br {
+        display: block;
+        content: "";
+        margin-top: 1em;
+      }
     `;
-
-    console.log(style);
 
     container.appendChild(style);
 
+    // Process variables in content
     const processedContent = props.content.replace(/\${(\w+)}/g, (_, key) => {
       return props.templateData?.[key]?.toString() || "";
     });
 
-    container.innerHTML += processedContent;
+    // Ensure empty paragraphs are preserved
+    const preservedContent = processedContent
+      .replace(/<p>\s*<\/p>/g, '<p class="empty-paragraph">&nbsp;</p>')
+      .replace(/<div>\s*<\/div>/g, '<div class="empty-div">&nbsp;</div>')
+      .replace(/<br>/g, '<br class="preserved-break">');
 
-    console.log(container);
+    container.innerHTML += preservedContent;
 
     // Important: Add to document immediately to ensure DOM elements exist for html2canvas
     document.body.appendChild(container);
 
     // Allow brief time for browser to process DOM changes
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -83,8 +103,6 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
     const elements = Array.from(container.children) as HTMLElement[];
 
     for (const element of elements) {
-      console.log(element);
-
       if (element.tagName === "TABLE") {
         const tableClone = element.cloneNode(true) as HTMLElement;
         container.appendChild(tableClone);
@@ -192,4 +210,25 @@ export function PDFDocument({
   templateData,
 }: PDFDocumentProps) {
   return null;
+}
+
+export async function downloadPdf(
+  content: string,
+  filename: string,
+  templateData?: TemplateData
+): Promise<void> {
+  try {
+    const blob = await createPDF({ content, templateData });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${filename}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error downloading PDF:", error);
+    throw error;
+  }
 }

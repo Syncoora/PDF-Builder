@@ -3,7 +3,13 @@
 import { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Save, FileText, Eye } from "lucide-react";
+import {
+  Download,
+  Save,
+  FileText,
+  Eye,
+  FileTextIcon as FileText2,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { SaveDialog } from "@/components/save-dialog";
 import { DocumentsDialog } from "@/components/documents-dialog";
@@ -14,6 +20,7 @@ import {
   deleteDocument,
 } from "@/lib/storage";
 import { createPDF } from "./pdf-document";
+import { downloadWordDoc } from "./word-document";
 import type { SavedDocument } from "@/lib/types";
 import type { EditorRef } from "./editor";
 import { initMondayClient, getContextData } from "@/lib/monday-sdk";
@@ -62,6 +69,7 @@ export default function TextEditorPage({ sampleData }) {
   const [meta, setMeta] = useState({ wordCount: 0, charCount: 0 });
   const [pdfTheme, setPdfTheme] = useState("default");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isGeneratingWord, setIsGeneratingWord] = useState(false);
   const [documents, setDocuments] = useState<SavedDocument[]>([]);
   const [currentDocument, setCurrentDocument] = useState<SavedDocument | null>(
     null
@@ -344,6 +352,64 @@ export default function TextEditorPage({ sampleData }) {
     }
   };
 
+  // Handle downloading as Word document
+  const handleDownloadWord = async (doc?: SavedDocument) => {
+    let contentToDownload: string;
+    let titleToUse = currentDocument?.title || "document";
+
+    if (doc && currentDocument?.id !== doc.id) {
+      // If downloading a different document, use that document's content
+      contentToDownload = doc.content;
+      titleToUse = doc.title;
+    } else {
+      // For the current document, get content directly from the editor
+      contentToDownload = editorRef.current?.getContent() || content;
+
+      // Make sure we're using the latest content
+      if (editorRef.current) {
+        const currentContent = editorRef.current.getContent();
+        setContent(currentContent);
+      }
+    }
+
+    if (!contentToDownload.trim()) {
+      toast({
+        title: "No content",
+        description:
+          "Please add some content before generating a Word document.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingWord(true);
+
+    try {
+      // Download the Word document
+      await downloadWordDoc(
+        contentToDownload,
+        `${titleToUse}-${new Date().toISOString().slice(0, 10)}`,
+        sampleData
+      );
+
+      toast({
+        title: "Success",
+        description: "Word document generated successfully",
+      });
+    } catch (error: any) {
+      console.error("Error generating Word document:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message ||
+          "Failed to generate Word document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingWord(false);
+    }
+  };
+
   // Process the HTML content for preview
   const processedContent = content.replace(/\${(\w+)}/g, (match, key) => {
     const value = sampleData[key];
@@ -451,15 +517,32 @@ export default function TextEditorPage({ sampleData }) {
             }
           />
 
-          {/* Export Group - Now just for PDF download */}
-          <Button
-            variant="outline"
-            onClick={() => handleDownloadPDF()}
-            disabled={isGeneratingPDF || !content.trim()}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {isGeneratingPDF ? "Generating..." : "Download PDF"}
-          </Button>
+          {/* Export Group - Now for PDF and Word downloads */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => handleDownloadPDF()}
+                disabled={isGeneratingPDF || !content.trim()}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {isGeneratingPDF ? "Generating PDF..." : "Download as PDF"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDownloadWord()}
+                disabled={isGeneratingWord || !content.trim()}
+              >
+                <FileText2 className="h-4 w-4 mr-2" />
+                {isGeneratingWord ? "Generating Word..." : "Download as Word"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Appearance Group */}
           <DropdownMenu>
@@ -525,6 +608,7 @@ export default function TextEditorPage({ sampleData }) {
             onLoad={handleLoad}
             onDelete={handleDelete}
             onDownload={handleDownloadPDF}
+            onDownloadWord={handleDownloadWord}
             currentDocumentId={currentDocument?.id}
             isLoading={isLoading}
             trigger={

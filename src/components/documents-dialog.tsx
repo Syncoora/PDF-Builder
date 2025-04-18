@@ -20,14 +20,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { SavedDocument } from "@/lib/types";
-import { FileIcon, Trash2Icon, Download, Edit } from "lucide-react";
+import {
+  FileIcon,
+  Trash2Icon,
+  Download,
+  Edit,
+  FileTextIcon as FileText2,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DocumentsDialogProps {
   documents: SavedDocument[];
   onLoad: (doc: SavedDocument) => void;
   onDelete: (id: string) => void;
   onDownload: (doc: SavedDocument) => void;
+  onDownloadWord?: (doc: SavedDocument) => void;
   currentDocumentId?: string;
   trigger?: React.ReactNode;
   isLoading?: boolean;
@@ -38,6 +51,7 @@ export function DocumentsDialog({
   onLoad,
   onDelete,
   onDownload,
+  onDownloadWord,
   currentDocumentId,
   trigger,
   isLoading = false,
@@ -127,13 +141,27 @@ export function DocumentsDialog({
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => onDownload(doc)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onDownload(doc)}>
+                              <FileIcon className="h-4 w-4 mr-2" />
+                              Download as PDF
+                            </DropdownMenuItem>
+                            {onDownloadWord && (
+                              <DropdownMenuItem
+                                onClick={() => onDownloadWord(doc)}
+                              >
+                                <FileText2 className="h-4 w-4 mr-2" />
+                                Download as Word
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                           variant="outline"
                           size="icon"

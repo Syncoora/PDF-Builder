@@ -172,7 +172,7 @@
 
 /* List styles for the preview */
 .prose ul {
-  list-style-type: disc;
+  list_style_type: disc;
   padding-left: 1.5em;
   margin: 0.5em 0; /* Reduced from 1em */
 }
@@ -439,4 +439,31 @@ h5,
 h6 {
   page-break-inside: avoid;
   page-break-after: avoid;
+}
+
+/* Add styles for empty paragraphs to ensure they have height */
+.ProseMirror p:empty::after {
+  content: "\00a0"; /* Non-breaking space */
+}
+
+.ProseMirror p:empty {
+  min-height: 1em;
+}
+
+/* Ensure empty paragraphs have height in preview */
+.prose p:empty::after {
+  content: "\00a0"; /* Non-breaking space */
+}
+
+.prose p:empty {
+  min-height: 1em;
+}
+
+/* Ensure empty paragraphs have height in PDF preview */
+.pdf-preview p:empty::after {
+  content: "\00a0"; /* Non-breaking space */
+}
+
+.pdf-preview p:empty {
+  min-height: 1em;
 }

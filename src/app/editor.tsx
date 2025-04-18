@@ -377,10 +377,10 @@ const Editor = forwardRef<EditorRef, EditorProps>(
     const [currentColor, setCurrentColor] = useState("#000000");
 
     // Add these state variables for the table settings
-    // Add this after the colorPickerOpen and currentColor state variables
     const [tableRows, setTableRows] = useState(3);
     const [tableCols, setTableCols] = useState(3);
     const [tableWithHeaderRow, setTableWithHeaderRow] = useState(true);
+    const [tableWithBorders, setTableWithBorders] = useState(true);
 
     // Create a new editor instance when content changes
     const editor = useEditor({
@@ -486,12 +486,24 @@ const Editor = forwardRef<EditorRef, EditorProps>(
       editor?.chain().focus().setMark("textStyle", { fontSize: size }).run();
     };
 
+    // Modified insertTable function to store border preference as a data attribute
     const insertTable = (
       rows: number,
       cols: number,
-      withHeaderRow: boolean
+      withHeaderRow: boolean,
+      withBorders: boolean
     ) => {
       editor?.chain().focus().insertTable({ rows, cols, withHeaderRow }).run();
+
+      // Add a data attribute to the table to store the border preference
+      setTimeout(() => {
+        const table = editor?.view.dom.querySelector("table:last-child");
+        if (table) {
+          const tableId = `table-${Date.now()}`;
+          table.setAttribute("data-table-id", tableId);
+          table.setAttribute("data-borders", withBorders ? "true" : "false");
+        }
+      }, 0);
     };
 
     const addColumnBefore = () => {
@@ -543,7 +555,28 @@ const Editor = forwardRef<EditorRef, EditorProps>(
       setColorPickerOpen(false);
     };
 
-    // Add a helper text above the editor
+    // Function to toggle border preference for the current table
+    const toggleTableBorders = (showBorders: boolean) => {
+      const table =
+        editor?.view.dom.querySelector("table.ProseMirror-selectedCell") ||
+        editor?.view.dom.querySelector("table:has(.ProseMirror-selectedCell)");
+
+      if (table) {
+        table.setAttribute("data-borders", showBorders ? "true" : "false");
+      }
+    };
+
+    // Function to get the current table's border preference
+    const getTableBorderPreference = () => {
+      const table =
+        editor?.view.dom.querySelector("table.ProseMirror-selectedCell") ||
+        editor?.view.dom.querySelector("table:has(.ProseMirror-selectedCell)");
+
+      if (table) {
+        return table.getAttribute("data-borders") !== "false";
+      }
+      return true;
+    };
 
     return (
       <div className="space-y-4">
@@ -806,9 +839,32 @@ const Editor = forwardRef<EditorRef, EditorProps>(
                     />
                     <Label htmlFor="header-row">Include header row</Label>
                   </div>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="table-borders"
+                      checked={tableWithBorders}
+                      onCheckedChange={(checked) =>
+                        setTableWithBorders(checked as boolean)
+                      }
+                    />
+                    <Label
+                      htmlFor="table-borders"
+                      className="flex items-center gap-1"
+                    >
+                      Show borders in exported document
+                      <span className="text-xs text-muted-foreground">
+                        (borders always show in editor)
+                      </span>
+                    </Label>
+                  </div>
                   <Button
                     onClick={() => {
-                      insertTable(tableRows, tableCols, tableWithHeaderRow);
+                      insertTable(
+                        tableRows,
+                        tableCols,
+                        tableWithHeaderRow,
+                        tableWithBorders
+                      );
                     }}
                     className="w-full"
                   >
@@ -887,6 +943,25 @@ const Editor = forwardRef<EditorRef, EditorProps>(
                     >
                       <Trash2 className="h-4 w-4 mr-1" /> Delete Table
                     </Button>
+                  </div>
+                  {/* Add a toggle borders option in the table options section */}
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="toggle-borders"
+                      checked={getTableBorderPreference()}
+                      onCheckedChange={(checked) =>
+                        toggleTableBorders(checked as boolean)
+                      }
+                    />
+                    <Label
+                      htmlFor="toggle-borders"
+                      className="flex items-center gap-1"
+                    >
+                      Show borders in exported document
+                      <span className="text-xs text-muted-foreground">
+                        (borders always show in editor)
+                      </span>
+                    </Label>
                   </div>
                 </div>
               )}
