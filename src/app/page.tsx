@@ -9,6 +9,7 @@ import {
   FileText,
   Eye,
   FileTextIcon as FileText2,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { SaveDialog } from "@/components/save-dialog";
@@ -72,6 +73,17 @@ export default function TextEditorPage({ sampleData }) {
   const previewRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+
+  // Add this state for the loading popup
+  const [loadingState, setLoadingState] = useState<{
+    isLoading: boolean;
+    type: "pdf" | "word" | "rtf" | null;
+    progress: string;
+  }>({
+    isLoading: false,
+    type: null,
+    progress: "",
+  });
 
   // Initialize Monday SDK and get context
   useEffect(() => {
@@ -305,6 +317,12 @@ export default function TextEditorPage({ sampleData }) {
     }
 
     setIsGeneratingPDF(true);
+    // Show loading popup
+    setLoadingState({
+      isLoading: true,
+      type: "pdf",
+      progress: "Preparing document...",
+    });
 
     try {
       // Process variables in content
@@ -328,6 +346,9 @@ export default function TextEditorPage({ sampleData }) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
+      // Update progress
+      setLoadingState((prev) => ({ ...prev, progress: "Generating PDF..." }));
+
       // Generate the PDF
       const blob = await createPDF({
         content: processedContent,
@@ -335,6 +356,9 @@ export default function TextEditorPage({ sampleData }) {
         meta: metaToUse,
         templateData: sampleData,
       });
+
+      // Update progress
+      setLoadingState((prev) => ({ ...prev, progress: "Downloading file..." }));
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -368,6 +392,12 @@ export default function TextEditorPage({ sampleData }) {
       });
     } finally {
       setIsGeneratingPDF(false);
+      // Hide loading popup
+      setLoadingState({
+        isLoading: false,
+        type: null,
+        progress: "",
+      });
     }
   };
 
@@ -402,14 +432,29 @@ export default function TextEditorPage({ sampleData }) {
     }
 
     setIsGeneratingWord(true);
+    // Show loading popup
+    setLoadingState({
+      isLoading: true,
+      type: "word",
+      progress: "Preparing document...",
+    });
 
     try {
+      // Update progress
+      setLoadingState((prev) => ({
+        ...prev,
+        progress: "Generating Word document...",
+      }));
+
       // Download the Word document
       await downloadWordDoc(
         contentToDownload,
         `${titleToUse}-${new Date().toISOString().slice(0, 10)}`,
         sampleData
       );
+
+      // Update progress
+      setLoadingState((prev) => ({ ...prev, progress: "Downloading file..." }));
 
       toast({
         title: "Success",
@@ -426,6 +471,43 @@ export default function TextEditorPage({ sampleData }) {
       });
     } finally {
       setIsGeneratingWord(false);
+      // Hide loading popup
+      setLoadingState({
+        isLoading: false,
+        type: null,
+        progress: "",
+      });
+    }
+  };
+
+  // Add this to the ExportMenu component's handleExportRtf function
+  const handleExportRtf = async () => {
+    try {
+      //setIsExporting("rtf")
+      // Show loading popup
+      setLoadingState({
+        isLoading: true,
+        type: "rtf",
+        progress: "Generating RTF document...",
+      });
+
+      //const rtfContent = createRtfDoc({ content, templateData })
+
+      // Update progress
+      setLoadingState((prev) => ({ ...prev, progress: "Downloading file..." }));
+
+      //const blob = new Blob([rtfContent], { type: "text/rtf" })
+      //FileSaver.saveAs(blob, `${filename}.rtf`)
+    } catch (error) {
+      console.error("Error exporting RTF:", error);
+    } finally {
+      //setIsExporting(null)
+      // Hide loading popup
+      setLoadingState({
+        isLoading: false,
+        type: null,
+        progress: "",
+      });
     }
   };
 
@@ -648,6 +730,32 @@ export default function TextEditorPage({ sampleData }) {
               className="table-container"
               dangerouslySetInnerHTML={{ __html: processedContent }}
             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Loading Dialog */}
+      <Dialog open={loadingState.isLoading} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" showClose={false}>
+          <div className="flex flex-col items-center justify-center py-6">
+            <div className="mb-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">
+              {loadingState.type === "pdf"
+                ? "Generating PDF"
+                : loadingState.type === "word"
+                ? "Generating Word Document"
+                : loadingState.type === "rtf"
+                ? "Generating RTF Document"
+                : null}
+            </h3>
+            <p className="text-muted-foreground text-center">
+              {loadingState.progress}
+            </p>
+            <p className="text-sm text-muted-foreground mt-4">
+              Please wait, this may take a moment...
+            </p>
           </div>
         </DialogContent>
       </Dialog>

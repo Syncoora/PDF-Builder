@@ -54,10 +54,12 @@
   color: var(--tw-prose-body);
 }
 
-/* Table styles */
+/* Update the table styles to be more consistent */
+
+/* Editor table styles */
 .ProseMirror table {
   border-collapse: collapse;
-  margin: 0.5em 0; /* Reduced from default */
+  margin: 0.5em 0;
   overflow: hidden;
   table-layout: fixed;
   width: 100%;
@@ -133,12 +135,13 @@
   color: currentColor;
 }
 
-/* Preview table styles */
+/* Preview table styles - make them match the editor */
 .prose table {
   width: 100%;
   border-collapse: collapse;
-  margin: 0.5rem 0; /* Reduced from 1rem */
+  margin: 0.5em 0;
   overflow-x: auto;
+  table-layout: fixed;
 }
 
 .prose table th,
@@ -146,15 +149,12 @@
   border: 2px solid #ddd;
   padding: 8px;
   text-align: left;
+  vertical-align: top;
 }
 
 .prose table th {
   background-color: #f1f3f5;
   font-weight: bold;
-}
-
-.prose table tr:nth-child(even) {
-  background-color: #f9f9f9;
 }
 
 .dark .prose table th {
@@ -295,6 +295,28 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* PDF Preview Styles - make them match the editor */
+.pdf-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  page-break-inside: avoid;
+  table-layout: fixed;
+}
+
+.pdf-preview table th,
+.pdf-preview table td {
+  border: 2px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.pdf-preview table th {
+  background-color: #f1f3f5;
+  font-weight: bold;
+}
+
 /* PDF Preview Styles */
 .pdf-preview {
   background-color: white !important;
@@ -312,24 +334,6 @@
 }
 
 /* Ensure tables in preview match editor tables */
-.pdf-preview table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.5em 0; /* Reduced from 10px */
-  page-break-inside: avoid; /* Prevent tables from breaking across pages */
-}
-
-.pdf-preview table th,
-.pdf-preview table td {
-  border: 2px solid #dddddd;
-  padding: 8px;
-  text-align: left;
-}
-
-.pdf-preview table th {
-  background-color: #f1f3f5;
-  font-weight: bold;
-}
 
 /* Fix transparent backgrounds */
 .pdf-preview p,

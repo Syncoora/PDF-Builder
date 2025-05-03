@@ -44,6 +44,11 @@ interface DocumentsDialogProps {
   currentDocumentId?: string;
   trigger?: React.ReactNode;
   isLoading?: boolean;
+  onLoadingStateChange?: (state: {
+    isLoading: boolean;
+    type: "pdf" | "word" | "rtf" | null;
+    progress: string;
+  }) => void;
 }
 
 export function DocumentsDialog({
@@ -55,6 +60,7 @@ export function DocumentsDialog({
   currentDocumentId,
   trigger,
   isLoading = false,
+  onLoadingStateChange,
 }: DocumentsDialogProps) {
   const [open, setOpen] = useState(false);
   const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
@@ -70,6 +76,20 @@ export function DocumentsDialog({
       await onDelete(id);
     } finally {
       setDeleteInProgress(null);
+    }
+  };
+
+  const handleDownload = (doc: SavedDocument) => {
+    onDownload(doc);
+    // Close the dialog when download starts
+    setOpen(false);
+  };
+
+  const handleDownloadWord = (doc: SavedDocument) => {
+    if (onDownloadWord) {
+      onDownloadWord(doc);
+      // Close the dialog when download starts
+      setOpen(false);
     }
   };
 
@@ -148,13 +168,15 @@ export function DocumentsDialog({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onDownload(doc)}>
+                            <DropdownMenuItem
+                              onClick={() => handleDownload(doc)}
+                            >
                               <FileIcon className="h-4 w-4 mr-2" />
                               Download as PDF
                             </DropdownMenuItem>
                             {onDownloadWord && (
                               <DropdownMenuItem
-                                onClick={() => onDownloadWord(doc)}
+                                onClick={() => handleDownloadWord(doc)}
                               >
                                 <FileText2 className="h-4 w-4 mr-2" />
                                 Download as Word

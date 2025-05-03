@@ -16,7 +16,7 @@ interface PDFDocumentProps {
   templateData?: TemplateData;
 }
 
-// Update the createPDF function to preserve empty lines
+// Update the createPDF function to ensure table styles match the editor
 export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
   try {
     const container = document.createElement("div");
@@ -36,14 +36,20 @@ export async function createPDF(props: PDFDocumentProps): Promise<Blob> {
         width: 100%;
         border-collapse: collapse;
         table-layout: fixed;
+        margin: 0.5em 0;
       }
       table, th, td {
-        border: 1px solid black;
+        border: 2px solid #ddd;
       }
       th, td {
         padding: 8px;
         text-align: left;
+        vertical-align: top;
         word-break: break-word;
+      }
+      th {
+        background-color: #f1f3f5;
+        font-weight: bold;
       }
       /* Ensure empty paragraphs have height */
       p:empty {
